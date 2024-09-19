@@ -12,6 +12,8 @@
   yojson
   lwt.unix
   ppx_deriving_yojson.runtime
-  ppx_deriving)
+  ppx_deriving
+  xmlm)
  (preprocess
-  (pps ppx_deriving.show ppx_deriving_yojson)))
+  (pps ppx_deriving.show ppx_deriving_yojson))
+ (modules_without_implementation types))
