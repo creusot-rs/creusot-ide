@@ -1,0 +1,68 @@
+{
+  "name": "creusot-ide",
+  "displayName": "Creusot IDE",
+  "description": "LSP client for Creusot",
+  "version": "0.1.1",
+  "publisher": "lysxia",
+  "repository": "https://github.com/creusot-rs/creusot-ide",
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": ["*"],
+  "main": "./out/main.js",
+  "contributes": {
+    "commands": [
+        {
+            "command": "testytest.helloWorld",
+            "title": "Hello World"
+        }
+    ],
+    "languages": [
+      {
+        "id": "coma",
+        "extensions": [".coma"]
+      },
+      {
+        "id": "why3session",
+        "filenames": ["why3session.xml"]
+      },
+      {
+        "id": "rust",
+        "extensions": [".rs"]
+      }
+    ],
+    "taskDefinitions": [
+        {
+            "type": "creusot"
+        }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build-base -- --minify",
+    "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "build": "npm run build-base -- --sourcemap",
+    "watch": "npm run build-base -- --sourcemap --watch",
+    "test-compile": "tsc -p ./",
+    "lint": "prettier --check . && eslint . --ext .ts,.tsx",
+    "fix": "prettier --write . && eslint . --ext .ts,.tsx --fix"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^12.12.0",
+    "@types/vscode": "^1.65.0",
+    "@typescript-eslint/eslint-plugin": "^5.55.0",
+    "@typescript-eslint/parser": "^5.55.0",
+    "esbuild": "^0.17.11",
+    "eslint": "^7.21.0",
+    "js-yaml": "^4.1.0",
+    "ovsx": "^0.8.0",
+    "prettier": "2.8.4",
+    "typescript": "^4.2.2",
+    "@vscode/vsce": "^3.1.0"
+  }
+}

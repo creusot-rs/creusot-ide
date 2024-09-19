@@ -1,0 +1,14 @@
+(executable
+ (public_name creusotlsp)
+ (package creusot-lsp)
+ (name main)
+ (flags
+  (:standard
+   (:include linking-flags-fserv.sexp)))
+ (libraries creusot_lsp why3 linol-lwt lsp logs uri lwt.unix ))
+
+(rule
+ (with-stdout-to
+  linking-flags-fserv.sexp
+  (run ./gen-linking-flags.sh %{env:LINKING_MODE=dynamic}
+    %{ocaml-config:system})))

@@ -1,0 +1,17 @@
+(library
+ (name creusot_lsp)
+ (libraries
+  dune-build-info
+  linol
+  linol-lwt
+  lwt
+  lsp
+  jsonrpc
+  why3
+  uri
+  yojson
+  lwt.unix
+  ppx_deriving_yojson.runtime
+  ppx_deriving)
+ (preprocess
+  (pps ppx_deriving.show ppx_deriving_yojson)))
