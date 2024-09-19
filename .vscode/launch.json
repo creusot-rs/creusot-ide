@@ -10,10 +10,6 @@
 			"args": ["--extensionDevelopmentPath=${workspaceRoot}/vscode"],
 			"outFiles": ["${workspaceRoot}/vscode/out/**/*.js"],
 			"preLaunchTask": "Build Server and Extension",
-			"env" : {
-				"DEBUG_SERVER_PATH": "${workspaceFolder}/_build/default/bin/main.exe"
-			}
 		},
-		
 	],
 }

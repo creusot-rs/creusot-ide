@@ -38,13 +38,24 @@ let diagnostics (_state : state_after_processing) : Lsp.Types.Diagnostic.t list
 *)
 class lsp_server =
   object (self)
-    inherit Linol_lwt.Jsonrpc2.server
+    inherit Linol_lwt.Jsonrpc2.server as super
 
     (* one env per document *)
     val buffers : (Lsp.Types.DocumentUri.t, state_after_processing) Hashtbl.t =
       Hashtbl.create 32
 
     method spawn_query_handler f = Linol_lwt.spawn f
+
+    method! on_req_initialize ~notify_back params =
+      let open Lsp.Types in
+      let* () = match params.InitializeParams.workspaceFolders with
+      | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
+        Creusot_lsp.collect_sessions
+          ~root:(DocumentUri.to_path folder.WorkspaceFolder.uri);
+        log_info notify_back @@ Creusot_lsp.debug_theories () (* TODO: create code lenses *)
+      | _ -> Lwt.return ()
+      in
+      super#on_req_initialize ~notify_back params
 
     (* We define here a helper method that will:
        - process a document
@@ -61,7 +72,6 @@ class lsp_server =
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
-      let* _ = log_info notify_back ("Opened: " ^ DocumentUri.to_string d.uri ^ "SHOULD FAIL") in
       self#_on_doc ~notify_back d.uri content
 
     (* Similarly, we also override the [on_notify_doc_did_change] method that will be called

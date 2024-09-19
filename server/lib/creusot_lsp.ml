@@ -30,40 +30,59 @@ let process_theory path : tree -> unit = function
   | `Theory (name, children) ->
     let goals = List.concat_map process_goal children in
     Hashtbl.add theories name { path; name; goals }
-  | _ -> Printf.printf "Skip"
+  | _ -> ()
 
 let process_why3session path : tree -> unit = function
   | `Session children -> List.iter (process_theory path) children
   | _ -> Printf.eprintf "Invalid why3session\n"
 
-let parse_why3session path : tree =
-  let file = open_in path in
-  let input = Xmlm.make_input (`Channel file) in
-  let not_skip = function `Skip -> false | _ -> true in
-  let filter_skip = List.filter not_skip in
-  let el ((_, tag), attr : Xmlm.tag) children : tree = match tag with
-    | "why3session" ->
-      begin match List.find_opt not_skip children with
-      | None -> `Session []
-      | Some s -> s
-      end
-    | "file" -> `Session (filter_skip children)
-    | "path" | "prover" | "result" | "undone" | "unedited" | "internalfailure" | "label" -> `Skip
-    | "theory" -> `Theory (List.assoc ("", "name") attr, filter_skip children)
-    | "goal" -> `Goal (List.assoc ("", "name") attr, filter_skip children)
-    | "transf" -> `Transf (List.assoc ("", "name") attr, filter_skip children)
-    | "proof" -> `Proof
-    | tag -> failwith ("Unexpected tag: " ^ tag) in
-  let data _ = `Skip in
-  snd (Xmlm.input_doc_tree ~el ~data input)
+let parse_why3session path : tree option =
+  try
+    let file = open_in path in
+    let input = Xmlm.make_input (`Channel file) in
+    let not_skip = function `Skip -> false | _ -> true in
+    let filter_skip = List.filter not_skip in
+    let el ((_, tag), attr : Xmlm.tag) children : tree = match tag with
+      | "why3session" ->
+        begin match List.find_opt not_skip children with
+        | None -> `Session []
+        | Some s -> s
+        end
+      | "file" -> `Session (filter_skip children)
+      | "path" | "prover" | "result" | "undone" | "unedited" | "internalfailure" | "label" -> `Skip
+      | "theory" -> `Theory (List.assoc ("", "name") attr, filter_skip children)
+      | "goal" -> `Goal (List.assoc ("", "name") attr, filter_skip children)
+      | "transf" -> `Transf (List.assoc ("", "name") attr, filter_skip children)
+      | "proof" -> `Proof
+      | tag -> failwith ("Unexpected tag: " ^ tag) in
+    let data _ = `Skip in
+    Some (snd (Xmlm.input_doc_tree ~el ~data input))
+  with
+  | e -> raise e (* TODO: log error *)
 
-let collect_sessions ~root ~package =
+let collect_sessions_for ~root ~crate =
   let (/) = Filename.concat in
-  let why3session_path = root / "target" / package / "why3session.xml" in
-  let why3session = parse_why3session why3session_path in
-  process_why3session why3session_path why3session
+  let why3session_path = root / "target" / (crate ^ "-lib") / "why3session.xml" in
+  match parse_why3session why3session_path with
+  | Some why3session -> process_why3session why3session_path why3session
+  | None -> ()
+
+let find_rust_crate root =
+  let (/) = Filename.concat in
+  try
+    match Toml.Parser.from_filename (root / "Cargo.toml") with
+    | `Error _ -> None
+    | `Ok file -> Toml.Lenses.(get file (field "package" |-- key "name" |-- string))
+  with Sys_error _ -> None
+
+let collect_sessions ~root =
+  match find_rust_crate root with
+  | None -> ()
+  | Some crate -> collect_sessions_for ~root ~crate
 
 let debug_theories () =
+  let r = ref [] in
   Hashtbl.iter (fun name info ->
-    Printf.printf "Theory %s (%s) has %d goals\n" name info.path
-      (List.length info.goals)) theories
+    let msg = Printf.sprintf "Theory %s (%s) has %d goals\n" name info.path (List.length info.goals) in
+    r := msg :: !r) theories;
+  String.concat "" !r

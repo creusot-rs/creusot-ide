@@ -15,7 +15,7 @@ import { access, existsSync } from "fs";
 import { runInContext } from "vm";
 
 const server : Executable = {
-    command: "/home/sam/rust/cide/server/_build/default/bin/main.exe",
+    command: "/home/sam/rust/cide/_build/default/server/bin/main.exe",
 }
 
 const languages = [
@@ -39,10 +39,5 @@ function startServer() : LanguageClient {
 }
 
 export function activate(context) {
-    let disposable = vscode.commands.registerCommand('testytest.helloWorld', function(){
-        vscode.window.showInformationMessage('Welcome!!!')
-    })
-    context.subscriptions.push(disposable);
     const client = startServer();
-    vscode.window.showInformationMessage('Started!!!');
 }

@@ -9,6 +9,7 @@
   jsonrpc
   why3
   uri
+  toml
   yojson
   lwt.unix
   ppx_deriving_yojson.runtime
