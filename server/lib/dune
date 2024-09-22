@@ -1,5 +1,6 @@
 (library
  (name creusot_lsp)
+ (public_name creusot-lsp)
  (libraries
   dune-build-info
   linol
@@ -18,3 +19,4 @@
  (preprocess
   (pps ppx_deriving.show ppx_deriving_yojson))
  (modules_without_implementation types))
+(ocamllex hacky_rs_parser)
