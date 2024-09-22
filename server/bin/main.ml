@@ -50,9 +50,9 @@ class lsp_server =
       let open Lsp.Types in
       let* () = match params.InitializeParams.workspaceFolders with
       | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
-        Creusot_lsp.collect_sessions
+        Creusot_lsp.Why3session.collect_sessions
           ~root:(DocumentUri.to_path folder.WorkspaceFolder.uri);
-        log_info notify_back @@ Creusot_lsp.debug_theories () (* TODO: create code lenses *)
+        log_info notify_back @@ Creusot_lsp.Why3session.debug_theories () (* TODO: create code lenses *)
       | _ -> Lwt.return ()
       in
       super#on_req_initialize ~notify_back params
