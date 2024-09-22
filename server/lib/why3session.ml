@@ -37,8 +37,9 @@ let process_why3session path : tree -> unit = function
   | _ -> Printf.eprintf "Invalid why3session\n"
 
 let parse_why3session path : tree option =
-  try
-    let file = open_in path in
+  match open_in path with
+  | exception Sys_error _ -> None
+  | file ->
     let input = Xmlm.make_input (`Channel file) in
     let not_skip = function `Skip -> false | _ -> true in
     let filter_skip = List.filter not_skip in
@@ -57,8 +58,6 @@ let parse_why3session path : tree option =
       | tag -> failwith ("Unexpected tag: " ^ tag) in
     let data _ = `Skip in
     Some (snd (Xmlm.input_doc_tree ~el ~data input))
-  with
-  | e -> raise e (* TODO: log error *)
 
 let collect_sessions_for ~root ~crate =
   let (/) = Filename.concat in
