@@ -44,6 +44,9 @@ class lsp_server =
     val buffers : (Lsp.Types.DocumentUri.t, state_after_processing) Hashtbl.t =
       Hashtbl.create 32
 
+    val funhooks : (Lsp.Types.DocumentUri.t, (string * Lsp.Types.Range.t) list) Hashtbl.t =
+      Hashtbl.create 32
+
     method spawn_query_handler f = Linol_lwt.spawn f
 
     method! on_req_initialize ~notify_back params =
@@ -72,6 +75,14 @@ class lsp_server =
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
+      let names = Creusot_lsp.Hacky_rs_parser.list_names (Lexing.from_string content) in
+      let hooks = names |> List.map (fun (name, span) ->
+            let span_to_range (start, stop) =
+              Lsp.Types.Range.create
+                ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
+                ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
+            (name, span_to_range span)) in
+      Hashtbl.add funhooks d.uri hooks;
       self#_on_doc ~notify_back d.uri content
 
     (* Similarly, we also override the [on_notify_doc_did_change] method that will be called
@@ -85,6 +96,14 @@ class lsp_server =
     method on_notif_doc_did_close ~notify_back:_ d : unit Linol_lwt.t =
       Hashtbl.remove buffers d.uri;
       Linol_lwt.return ()
+
+    method! on_req_code_lens ~notify_back:_ ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
+      let hooks = Hashtbl.find funhooks uri in
+      let lenses = hooks |> List.map (fun (name, range) ->
+          Lsp.Types.CodeLens.create
+            (* ~command:(Some (Lsp.Types.Command.create ~title:"Run" ~command:"creusot.run" ~arguments:(Some [name])))) *)
+            ~data:(`String name) ~range ()) in
+      Lwt.return lenses
   end
 
 let run () =
