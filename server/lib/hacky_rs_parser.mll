@@ -16,6 +16,10 @@ let print_position p =
 
 let minus_position p n =
     { p with Lexing.pos_cnum = p.Lexing.pos_cnum - n }
+
+type span = Lexing.position * Lexing.position
+let funnames : (string * span) list ref = ref []
+let get_funnames () = !funnames
 }
 
 let white = [' ' '\t' '\n' '\r']
@@ -26,9 +30,14 @@ rule rust = parse
     | (white+ as s) { line_incs s lexbuf; rust lexbuf }
     | ("pub" white+ "fn" white+ (ident as name) as s) {
         line_incs s lexbuf;
-        prerr_endline name;
-        print_position (minus_position lexbuf.Lexing.lex_curr_p (String.length name));
-        print_position lexbuf.Lexing.lex_curr_p;
+        funnames := (name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
     | _ { rust lexbuf }
     | eof { () }
+
+{
+let list_names lexbuf =
+    funnames := [];
+    rust lexbuf;
+    get_funnames ()
+}
