@@ -40,4 +40,10 @@ function startServer() : LanguageClient {
 
 export function activate(context) {
     const client = startServer();
+    const disposable = vscode.commands.registerCommand("creusot.openFile", async (file) => {
+        const uri = Uri.file(file);
+        const document = await workspace.openTextDocument(uri);
+        await window.showTextDocument(document);
+    })
+    context.subscriptions.push(disposable);
 }

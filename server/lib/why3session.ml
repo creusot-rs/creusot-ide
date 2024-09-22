@@ -1,6 +1,8 @@
 open Types
 
 let theories : theories_map = Hashtbl.create 32
+let package_name = ref ""
+let get_package_name () = !package_name
 
 type tree
   = [
@@ -71,7 +73,10 @@ let find_rust_crate root =
   try
     match Toml.Parser.from_filename (root / "Cargo.toml") with
     | `Error _ -> None
-    | `Ok file -> Toml.Lenses.(get file (field "package" |-- key "name" |-- string))
+    | `Ok file ->
+      let name_opt = Toml.Lenses.(get file (field "package" |-- key "name" |-- string)) in
+      Option.iter (fun name -> package_name := name) name_opt;
+      name_opt
   with Sys_error _ -> None
 
 let collect_sessions ~root =
@@ -85,3 +90,23 @@ let debug_theories () =
     let msg = Printf.sprintf "Theory %s (%s) has %d goals\n" name info.path (List.length info.goals) in
     r := msg :: !r) theories;
   String.concat "" !r
+
+let get_theory (name : string) =
+  Hashtbl.find_opt theories name
+
+let encode_segment (s : string) =
+  let rec encode i : char Seq.t = fun () ->
+    if i = String.length s then Seq.Nil
+    else if i + 1 = String.length s && s.[i] = '_' then String.to_seq "qy95z" ()
+    else if s.[i] = '_' && s.[i+1] = '_' then Seq.append (String.to_seq "qy95z") (encode (i+1)) ()
+    else Seq.Cons (s.[i], encode (i+1))
+  in
+  String.of_seq (if s.[0] = '_'
+    then Seq.append (String.to_seq "qy95z") (encode 1)
+    else encode 0)
+
+let encode_path (s : string list) =
+  s |> List.map encode_segment
+    |> String.concat "__"
+
+let theory_of_path (s : string list) = "M_" ^ encode_path s

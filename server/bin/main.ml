@@ -25,6 +25,12 @@ let diagnostics (_state : state_after_processing) : Lsp.Types.Diagnostic.t list
     =
   []
 
+type doc = {
+    package: string;
+    module_: string;
+    defns: (string * Lsp.Types.Range.t) list;
+  }
+
 (* Lsp server class
 
    This is the main point of interaction beetween the code checking documents
@@ -44,7 +50,7 @@ class lsp_server =
     val buffers : (Lsp.Types.DocumentUri.t, state_after_processing) Hashtbl.t =
       Hashtbl.create 32
 
-    val funhooks : (Lsp.Types.DocumentUri.t, (string * Lsp.Types.Range.t) list) Hashtbl.t =
+    val funhooks : (Lsp.Types.DocumentUri.t, doc) Hashtbl.t =
       Hashtbl.create 32
 
     method spawn_query_handler f = Linol_lwt.spawn f
@@ -55,7 +61,7 @@ class lsp_server =
       | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
         Creusot_lsp.Why3session.collect_sessions
           ~root:(DocumentUri.to_path folder.WorkspaceFolder.uri);
-        log_info notify_back @@ Creusot_lsp.Why3session.debug_theories () (* TODO: create code lenses *)
+        log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
       | _ -> Lwt.return ()
       in
       super#on_req_initialize ~notify_back params
@@ -72,20 +78,30 @@ class lsp_server =
       let diags = diagnostics new_state in
       notify_back#send_diagnostic diags
 
-    method private refresh_lenses (uri : DocumentUri.t) ~content =
-      let names = Creusot_lsp.Hacky_rs_parser.list_names (Lexing.from_string content) in
-      let hooks = names |> List.map (fun (name, span) ->
-            let span_to_range (start, stop) =
-              Lsp.Types.Range.create
-                ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
-                ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
-            (name, span_to_range span)) in
-      Hashtbl.add funhooks uri hooks
+    method private refresh_lenses ?languageId (uri : DocumentUri.t) ~content =
+      let rusty = match languageId with
+        | Some "rust" -> true
+        | Some _ -> false
+        | None -> match Hashtbl.find_opt funhooks uri with (* if we did refresh the lenses once it must have been rust *)
+          | Some _ -> true
+          | None -> false in
+      if rusty then (
+        let package = Creusot_lsp.Why3session.get_package_name () in
+        let module_ = uri |> DocumentUri.to_path |> Filename.basename |> Filename.remove_extension in
+        let names = Creusot_lsp.Hacky_rs_parser.list_names (Lexing.from_string content) in
+        let defns = names |> List.map (fun (name, span) ->
+              let span_to_range (start, stop) =
+                Lsp.Types.Range.create
+                  ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
+                  ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
+              (name, span_to_range span)) in
+        Hashtbl.add funhooks uri { package; module_; defns }
+      )
 
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
-      self#refresh_lenses d.uri ~content;
+      self#refresh_lenses ~languageId:d.languageId d.uri ~content;
       self#_on_doc ~notify_back d.uri content
 
     (* Similarly, we also override the [on_notify_doc_did_change] method that will be called
@@ -107,13 +123,25 @@ class lsp_server =
       }
 
     method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
-      let hooks = Hashtbl.find funhooks uri in
-      let lenses = hooks |> List.map (fun (name, range) ->
-          Lsp.Types.CodeLens.create
-            ~command:(Lsp.Types.Command.create ~title:name ~command:"creusot.run" ~arguments:[`String name] ())
-            ~range ()) in
-      let* _ = log_info notify_back @@ Printf.sprintf "%s: Found %d lenses" (DocumentUri.to_string uri) (List.length lenses) in
-      Lwt.return lenses
+      match Hashtbl.find_opt funhooks uri with
+      | None -> Lwt.return []
+      | Some doc ->
+        let* lenses = doc.defns |> Lwt_list.filter_map_s (fun (name, range) ->
+            let th_name = Creusot_lsp.Why3session.theory_of_path [doc.package; doc.module_; name] in
+            let* _ = log_info notify_back (Printf.sprintf "%s" th_name) in
+            let th_opt = Creusot_lsp.Why3session.get_theory th_name in
+            let lwt_option_map f = function
+              | None -> Lwt.return None
+              | Some x -> Lwt.map (fun y -> Some y) (f x) in
+            th_opt |> lwt_option_map @@ fun th ->
+              let sum_of f = List.fold_left (fun acc x -> f x + acc) 0 in
+              let n_goals = sum_of (fun goal -> goal.Creusot_lsp.Types.unproved_subgoals) th.Creusot_lsp.Types.goals in
+              let command = Lsp.Types.Command.create
+                ~title:(Printf.sprintf "%d unproved goals" n_goals)
+                ~command:"creusot.openFile"
+                ~arguments:[`String th.Creusot_lsp.Types.path] () in
+              Lwt.return @@ Lsp.Types.CodeLens.create ~command ~range ()) in
+        Lwt.return lenses
   end
 
 let run () =
