@@ -28,7 +28,7 @@ let ident = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule rust = parse
     | (white+ as s) { line_incs s lexbuf; rust lexbuf }
-    | ("pub" white+ "fn" white+ (ident as name) as s) {
+    | ("fn" white+ (ident as name) as s) {
         line_incs s lexbuf;
         funnames := (name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
