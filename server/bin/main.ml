@@ -53,16 +53,24 @@ class lsp_server =
     val funhooks : (Lsp.Types.DocumentUri.t, doc) Hashtbl.t =
       Hashtbl.create 32
 
-    method spawn_query_handler f = Linol_lwt.spawn f
+    val rootUri : DocumentUri.t option ref = ref None
+    method private mk_relative_path p =
+      match !rootUri with
+      | None -> Stdlib.failwith "No rootUri found"
+      | Some root -> DocumentUri.of_path (Filename.concat (DocumentUri.to_path root) p)
+
+    method private spawn_query_handler f = Linol_lwt.spawn f
 
     method! on_req_initialize ~notify_back params =
       let open Lsp.Types in
+      rootUri := params.rootUri;
+      let* _ = match params.rootUri with Some root -> log_info notify_back @@ DocumentUri.to_string root in
       let* () = match params.InitializeParams.workspaceFolders with
-      | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
-        Creusot_lsp.Why3session.collect_sessions
-          ~root:(DocumentUri.to_path folder.WorkspaceFolder.uri);
-        log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
-      | _ -> Lwt.return ()
+        | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
+          Creusot_lsp.Why3session.collect_sessions
+            ~root:(DocumentUri.to_path folder.WorkspaceFolder.uri);
+          log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
+        | _ -> Lwt.return ()
       in
       super#on_req_initialize ~notify_back params
 
@@ -141,6 +149,33 @@ class lsp_server =
                 ~arguments:[`String th.Creusot_lsp.Types.path] () in
               Lwt.return @@ Lsp.Types.CodeLens.create ~command ~range ()) in
         Lwt.return lenses
+
+    method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
+
+    method! on_req_inlay_hint ~notify_back ~id ~uri ~range () =
+      let* _ = log_info notify_back "req inlay hint" in
+      match Hashtbl.find_opt funhooks uri with
+      | None -> Lwt.return None
+      | Some doc ->
+        let* hints = doc.defns |> Lwt_list.filter_map_s (fun (qname, range) ->
+            let th_name = Creusot_lsp.Why3session.theory_of_path (doc.package :: doc.module_ :: qname) in
+            let th_opt = Creusot_lsp.Why3session.get_theory th_name in
+            let lwt_option_map f = function
+              | None -> Lwt.return None
+              | Some x -> Lwt.map (fun y -> Some y) (f x) in
+            th_opt |> lwt_option_map @@ fun th ->
+              let position = range.Range.start in
+              let command = Lsp.Types.Command.create
+                ~title:"" (* unused *)
+                ~command:"creusot.openFile"
+                ~arguments:[`String th.Creusot_lsp.Types.path] () in
+              let to_hint_label goal = Lsp.Types.InlayHintLabelPart.create
+                  ~tooltip:(`String "Go to goal")
+                  ~command
+                  ~value:goal.Creusot_lsp.Types.goal_name () in
+              let label = `List (Array.to_list @@ Array.map to_hint_label th.Creusot_lsp.Types.unproved_goals) in
+              Lwt.return @@ Lsp.Types.InlayHint.create ~label ~position ()) in
+        Lwt.return (Some hints)
   end
 
 let run () =

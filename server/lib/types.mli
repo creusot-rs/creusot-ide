@@ -1,6 +1,6 @@
 (* Type definitions in their own module to not duplicate them in a .ml file. *)
 
-type goal = { name: string }
+type goal = { goal_name: string }
 
 type theory_ident = string
 type theory_info =

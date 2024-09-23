@@ -15,12 +15,12 @@ type tree
   ]
 
 let rec process_goal : tree -> goal list = function
-  | `Goal (name, children) ->
+  | `Goal (goal_name, children) ->
         begin match children with
           (* only look at the first attempt *)
         | `Proof :: _ -> []
         | `Transf (_, children) :: _ -> List.concat_map process_goal children
-        | _ (* should be [] *) -> [{ name }]
+        | _ (* should be [] *) -> [{ goal_name }]
         end
   | _ -> []
 

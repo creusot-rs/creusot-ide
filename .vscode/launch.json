@@ -7,7 +7,7 @@
 			"request": "launch",
 			"name": "Launch Client",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--extensionDevelopmentPath=${workspaceRoot}/vscode"],
+			"args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceRoot}/vscode"],
 			"outFiles": ["${workspaceRoot}/vscode/out/**/*.js"],
 			"preLaunchTask": "Build Server and Extension",
 		},
