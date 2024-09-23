@@ -18,8 +18,27 @@ let minus_position p n =
     { p with Lexing.pos_cnum = p.Lexing.pos_cnum - n }
 
 type span = Lexing.position * Lexing.position
-let funnames : (string * span) list ref = ref []
+let funnames : (string list * span) list ref = ref []
 let get_funnames () = !funnames
+type stack_symbol
+    = Curly
+    | Mod of string
+let stack = ref []
+let push_stack s = stack := s :: !stack
+let pop_stack () =
+    match !stack with
+    | [] -> ()
+    | _ :: tl -> stack := tl
+
+let mk_name name =
+    let rec unstack qname = function
+        | [] -> qname
+        | Curly :: s -> unstack qname s
+        | Mod m :: s -> unstack (m :: qname) s
+    in
+    unstack [name] !stack
+
+let string_of_qname = String.concat "."
 }
 
 let white = [' ' '\t' '\n' '\r']
@@ -28,10 +47,17 @@ let ident = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule rust = parse
     | (white+ as s) { line_incs s lexbuf; rust lexbuf }
+    | ("mod" white+ (ident as modname) white* '{' as s) {
+        line_incs s lexbuf;
+        push_stack (Mod modname);
+        rust lexbuf
+    }
+    | '{' { push_stack Curly; rust lexbuf }
     | ("fn" white+ (ident as name) as s) {
         line_incs s lexbuf;
-        funnames := (name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
+        funnames := (mk_name name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
+    | '}' { pop_stack (); rust lexbuf }
     | _ { rust lexbuf }
     | eof { () }
 

@@ -28,7 +28,7 @@ let diagnostics (_state : state_after_processing) : Lsp.Types.Diagnostic.t list
 type doc = {
     package: string;
     module_: string;
-    defns: (string * Lsp.Types.Range.t) list;
+    defns: (string list * Lsp.Types.Range.t) list;
   }
 
 (* Lsp server class
@@ -89,12 +89,12 @@ class lsp_server =
         let package = Creusot_lsp.Why3session.get_package_name () in
         let module_ = uri |> DocumentUri.to_path |> Filename.basename |> Filename.remove_extension in
         let names = Creusot_lsp.Hacky_rs_parser.list_names (Lexing.from_string content) in
-        let defns = names |> List.map (fun (name, span) ->
+        let defns = names |> List.map (fun (qname, span) ->
               let span_to_range (start, stop) =
                 Lsp.Types.Range.create
                   ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
                   ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
-              (name, span_to_range span)) in
+              (qname, span_to_range span)) in
         Hashtbl.add funhooks uri { package; module_; defns }
       )
 
@@ -126,8 +126,8 @@ class lsp_server =
       match Hashtbl.find_opt funhooks uri with
       | None -> Lwt.return []
       | Some doc ->
-        let* lenses = doc.defns |> Lwt_list.filter_map_s (fun (name, range) ->
-            let th_name = Creusot_lsp.Why3session.theory_of_path [doc.package; doc.module_; name] in
+        let* lenses = doc.defns |> Lwt_list.filter_map_s (fun (qname, range) ->
+            let th_name = Creusot_lsp.Why3session.theory_of_path (doc.package :: doc.module_ :: qname) in
             let* _ = log_info notify_back (Printf.sprintf "%s" th_name) in
             let th_opt = Creusot_lsp.Why3session.get_theory th_name in
             let lwt_option_map f = function
