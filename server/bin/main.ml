@@ -134,8 +134,7 @@ class lsp_server =
               | None -> Lwt.return None
               | Some x -> Lwt.map (fun y -> Some y) (f x) in
             th_opt |> lwt_option_map @@ fun th ->
-              let sum_of f = List.fold_left (fun acc x -> f x + acc) 0 in
-              let n_goals = sum_of (fun goal -> goal.Creusot_lsp.Types.unproved_subgoals) th.Creusot_lsp.Types.goals in
+              let n_goals = Array.length th.Creusot_lsp.Types.unproved_goals in
               let command = Lsp.Types.Command.create
                 ~title:(Printf.sprintf "%d unproved goals" n_goals)
                 ~command:"creusot.openFile"

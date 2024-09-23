@@ -15,23 +15,19 @@ type tree
   ]
 
 let rec process_goal : tree -> goal list = function
-  | `Goal (name, children) -> [{
-      name;
-      unproved_subgoals =
-        match children with
+  | `Goal (name, children) ->
+        begin match children with
           (* only look at the first attempt *)
-        | `Proof :: _ -> 0
-        | `Transf (_, children) :: _ ->
-          let sum_of f = List.fold_left (fun acc x -> acc + f x) 0 in
-          children |> sum_of (fun goal ->
-                process_goal goal |> sum_of (fun g -> g.unproved_subgoals))
-        | _ -> 1 (* unproved goal *) }]
+        | `Proof :: _ -> []
+        | `Transf (_, children) :: _ -> List.concat_map process_goal children
+        | _ (* should be [] *) -> [{ name }]
+        end
   | _ -> []
 
 let process_theory path : tree -> unit = function
   | `Theory (name, children) ->
-    let goals = List.concat_map process_goal children in
-    Hashtbl.add theories name { path; name; goals }
+    let unproved_goals = Array.of_list @@ List.concat_map process_goal children in
+    Hashtbl.add theories name { path; name; unproved_goals }
   | _ -> ()
 
 let process_why3session path : tree -> unit = function
@@ -87,7 +83,7 @@ let collect_sessions ~root =
 let debug_theories () =
   let r = ref [] in
   Hashtbl.iter (fun name info ->
-    let msg = Printf.sprintf "Theory %s (%s) has %d goals\n" name info.path (List.length info.goals) in
+    let msg = Printf.sprintf "Theory %s (%s) has %d unproved goals\n" name info.path (Array.length info.unproved_goals) in
     r := msg :: !r) theories;
   String.concat "" !r
 
