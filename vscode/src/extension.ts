@@ -64,14 +64,24 @@ export function activate(context: ExtensionContext) {
         const locations = rawLocations.map(mkLocation)
         await vscode.commands.executeCommand("editor.action.peekLocations", uri, position, locations, "peek")
     })
-    /* Task and command to start Why3 IDE */
+    /* Creusot Build */
+    const creusotBuild = new vscode.Task(
+        { type: "shell" },
+        vscode.TaskScope.Workspace,
+        "Creusot Build",
+        "creusot",
+        new vscode.ShellExecution("cargo", ["creusot"])
+    )
+    registerCommand(context, "creusot.build", async () => {
+        const exec = await vscode.tasks.executeTask(creusotBuild)
+    })
+    /* Launch Why3 IDE */
     const why3ide = new vscode.Task(
         { type: "shell" },
         vscode.TaskScope.Workspace,
         "Launch Why3 IDE",
         "creusot",
-        new vscode.ShellExecution("cargo", ["creusot", "why3", "ide"]),
-        []
+        new vscode.ShellExecution("cargo", ["creusot", "why3", "ide"])
     )
     registerCommand(context, "creusot.why3ide", async () => {
         const exec = await vscode.tasks.executeTask(why3ide)

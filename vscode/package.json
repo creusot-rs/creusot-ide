@@ -16,6 +16,10 @@
   "contributes": {
     "commands": [
         {
+            "command": "creusot.build",
+            "title": "Creusot Build"
+        },
+        {
             "command": "creusot.why3ide",
             "title": "Launch Why3 IDE"
         }
