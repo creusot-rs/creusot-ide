@@ -158,9 +158,10 @@ class lsp_server =
               Lwt.return @@ Lsp.Types.CodeLens.create ~command ~range ()) in
         Lwt.return lenses
 
-    method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
+    method! config_inlay_hints = None (* Some (`InlayHintOptions (InlayHintOptions.create ())) *)
 
     method! on_req_inlay_hint ~notify_back ~id ~uri ~range () =
+      if false then (
       let* _ = log_info notify_back "req inlay hint" in
       match Hashtbl.find_opt funhooks uri with
       | None -> Lwt.return None
@@ -183,7 +184,8 @@ class lsp_server =
                   ~value:goal.Creusot_lsp.Types.goal_name () in
               let label = `List (Array.to_list @@ Array.map to_hint_label th.Creusot_lsp.Types.unproved_goals) in
               Lwt.return @@ Lsp.Types.InlayHint.create ~label ~position ()) in
-        Lwt.return (Some hints)
+        Lwt.return (Some hints))
+      else Lwt.return None
   end
 
 let run () =
