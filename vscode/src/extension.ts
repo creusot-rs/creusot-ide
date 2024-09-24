@@ -38,7 +38,15 @@ function startServer() : LanguageClient {
     return client;
 }
 
-export function activate(context) {
+type RawPosition = {line: number, character: number}
+type RawRange = {start: RawPosition, end: RawPosition}
+type RawLocation = {uri: string, range: RawRange}
+
+const mkPosition = (raw : RawPosition) => new vscode.Position(raw.line, raw.character)
+const mkRange = (raw : RawRange) => new vscode.Range(mkPosition(raw.start), mkPosition(raw.end))
+const mkLocation = (raw : RawLocation) => new vscode.Location(Uri.parse(raw.uri), mkRange(raw.range))
+
+export function activate(context: ExtensionContext) {
     const client = startServer();
     const disposable = vscode.commands.registerCommand("creusot.openFile", async (file) => {
         const uri = Uri.file(file);
@@ -46,4 +54,11 @@ export function activate(context) {
         await window.showTextDocument(document);
     })
     context.subscriptions.push(disposable);
+    const peekLocationsDisposable = vscode.commands.registerCommand("creusot.peekLocations", async (rawUri, rawPosition, rawLocations : Array<RawLocation>) => {
+        const uri = Uri.parse(rawUri)
+        const position = mkPosition(rawPosition)
+        const locations = rawLocations.map(mkLocation)
+        await vscode.commands.executeCommand("editor.action.peekLocations", uri, position, locations, "peek")
+    })
+    context.subscriptions.push(peekLocationsDisposable);
 }

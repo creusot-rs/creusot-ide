@@ -16,8 +16,8 @@
   "contributes": {
     "commands": [
         {
-            "command": "testytest.helloWorld",
-            "title": "Hello World"
+            "command": "test",
+            "title": "Test"
         }
     ],
     "languages": [
