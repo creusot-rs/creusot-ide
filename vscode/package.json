@@ -16,8 +16,8 @@
   "contributes": {
     "commands": [
         {
-            "command": "test",
-            "title": "Test"
+            "command": "creusot.why3ide",
+            "title": "Launch Why3 IDE"
         }
     ],
     "languages": [

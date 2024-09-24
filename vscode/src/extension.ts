@@ -52,7 +52,7 @@ function registerCommand(context: ExtensionContext, name: string, cmd: (...args:
 }
 
 export function activate(context: ExtensionContext) {
-    const client = startServer();
+    /* Basic system commands */
     registerCommand(context, "creusot.openFile", async (file) => {
         const uri = Uri.file(file);
         const document = await workspace.openTextDocument(uri);
@@ -64,4 +64,17 @@ export function activate(context: ExtensionContext) {
         const locations = rawLocations.map(mkLocation)
         await vscode.commands.executeCommand("editor.action.peekLocations", uri, position, locations, "peek")
     })
+    /* Task and command to start Why3 IDE */
+    const why3ide = new vscode.Task(
+        { type: "shell" },
+        vscode.TaskScope.Workspace,
+        "Launch Why3 IDE",
+        "creusot",
+        new vscode.ShellExecution("cargo", ["creusot", "why3", "ide"]),
+        []
+    )
+    registerCommand(context, "creusot.why3ide", async () => {
+        const exec = await vscode.tasks.executeTask(why3ide)
+    })
+    const client = startServer();
 }
