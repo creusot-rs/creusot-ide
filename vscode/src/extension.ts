@@ -46,19 +46,22 @@ const mkPosition = (raw : RawPosition) => new vscode.Position(raw.line, raw.char
 const mkRange = (raw : RawRange) => new vscode.Range(mkPosition(raw.start), mkPosition(raw.end))
 const mkLocation = (raw : RawLocation) => new vscode.Location(Uri.parse(raw.uri), mkRange(raw.range))
 
+function registerCommand(context: ExtensionContext, name: string, cmd: (...args: any[]) => any) {
+    const disposable = vscode.commands.registerCommand(name, cmd)
+    context.subscriptions.push(disposable)
+}
+
 export function activate(context: ExtensionContext) {
     const client = startServer();
-    const disposable = vscode.commands.registerCommand("creusot.openFile", async (file) => {
+    registerCommand(context, "creusot.openFile", async (file) => {
         const uri = Uri.file(file);
         const document = await workspace.openTextDocument(uri);
         await window.showTextDocument(document);
     })
-    context.subscriptions.push(disposable);
-    const peekLocationsDisposable = vscode.commands.registerCommand("creusot.peekLocations", async (rawUri, rawPosition, rawLocations : Array<RawLocation>) => {
+    registerCommand(context, "creusot.peekLocations", async (rawUri, rawPosition, rawLocations : RawLocation[]) => {
         const uri = Uri.parse(rawUri)
         const position = mkPosition(rawPosition)
         const locations = rawLocations.map(mkLocation)
         await vscode.commands.executeCommand("editor.action.peekLocations", uri, position, locations, "peek")
     })
-    context.subscriptions.push(peekLocationsDisposable);
 }
