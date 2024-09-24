@@ -79,11 +79,40 @@ class lsp_server =
        - return the diagnostics from the new state
     *)
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
-        (uri : Lsp.Types.DocumentUri.t) (contents : string) =
-      let new_state = process_some_input_file contents in
-      Hashtbl.replace buffers uri new_state;
-      let diags = diagnostics new_state in
-      notify_back#send_diagnostic diags
+        (uri : Lsp.Types.DocumentUri.t) (_contents : string) =
+        match Hashtbl.find_opt funhooks uri with
+        | None -> Lwt.return ()
+        | Some doc ->
+          let* diags = doc.defns |> Lwt_list.filter_map_s (fun (qname, range) ->
+              let th_name = Creusot_lsp.Why3session.theory_of_path (doc.package :: doc.module_ :: qname) in
+              let* _ = log_info notify_back (Printf.sprintf "%s" th_name) in
+              let th_opt = Creusot_lsp.Why3session.get_theory th_name in
+              let lwt_option_bind f = function
+                | None -> Lwt.return None
+                | Some x -> f x in
+              th_opt |> lwt_option_bind @@ fun th ->
+                let n_goals = Array.length th.Creusot_lsp.Types.unproved_goals in
+                let why3session_path = DocumentUri.of_path th.Creusot_lsp.Types.path in
+                let source = "creusot" in
+                if n_goals = 0 then
+                  let message = "QED" in
+                  let severity = DiagnosticSeverity.Information in
+                  Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ())
+                else
+                  let message = Printf.sprintf "%d unproved goals" n_goals in
+                  let severity = DiagnosticSeverity.Warning in
+                  let dummy_pos = Position.create ~line:1 ~character:1 in
+                  let dummy_pos' = Position.create ~line:1 ~character:2 in
+                  let tgt_range = Range.create ~start:dummy_pos ~end_:dummy_pos' in
+                  let relatedInformation = Array.to_list @@ Array.map (fun goal -> DiagnosticRelatedInformation.create
+                      ~location:(Location.create
+                        ~uri:why3session_path
+                        ~range:tgt_range)
+                      ~message:goal.Creusot_lsp.Types.goal_name
+                    ) th.Creusot_lsp.Types.unproved_goals in
+                  Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()))
+          in
+          notify_back#send_diagnostic diags
 
     method private refresh_lenses ?languageId (uri : DocumentUri.t) ~content =
       let rusty = match languageId with
