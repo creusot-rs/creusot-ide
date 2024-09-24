@@ -147,14 +147,21 @@ class lsp_server =
               let dummy_pos = Position.create ~line:1 ~character:1 in
               let dummy_pos' = Position.create ~line:1 ~character:2 in
               let tgt_range = Range.create ~start:dummy_pos ~end_:dummy_pos' in
-              let command = Lsp.Types.Command.create
-                ~title:(Printf.sprintf "%d unproved goals" n_goals)
-                ~command:"creusot.peekLocations"
-                ~arguments:[
-                  DocumentUri.yojson_of_t uri;
-                  Position.(yojson_of_t range.Range.start);
-                  `List [(Array.map (fun _ -> Location.(yojson_of_t @@ create ~range:tgt_range ~uri:why3session_path)) th.Creusot_lsp.Types.unproved_goals).(0)];
-                  `String "gotoAndPeek"] () in
+              let command = if n_goals = 0 then
+                  Lsp.Types.Command.create
+                    ~title:"QED"
+                    ~command:""
+                    ()
+                else Lsp.Types.Command.create
+                  ~title:(Printf.sprintf "%d unproved goals" n_goals)
+                  ~command:"creusot.peekLocations"
+                  ~arguments:[
+                    DocumentUri.yojson_of_t uri;
+                    Position.(yojson_of_t range.Range.start);
+                    `List [(Array.map (fun _ -> Location.(yojson_of_t @@ create ~range:tgt_range ~uri:why3session_path)) th.Creusot_lsp.Types.unproved_goals).(0)];
+                    `String "gotoAndPeek"]
+                    ()
+              in
               Lwt.return @@ Lsp.Types.CodeLens.create ~command ~range ()) in
         Lwt.return lenses
 
