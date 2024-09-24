@@ -86,5 +86,17 @@ export function activate(context: ExtensionContext) {
     registerCommand(context, "creusot.why3ide", async () => {
         const exec = await vscode.tasks.executeTask(why3ide)
     })
+
+    /* Why3find Prove */
+    const creusotProve = new vscode.Task(
+        { type: "shell" },
+        vscode.TaskScope.Workspace,
+        "Why3find Prove",
+        "creusot",
+        new vscode.ShellExecution("why3find", ["prove", "--package", "prelude", "target/*.coma"])
+    )
+    registerCommand(context, "creusot.prove", async () => {
+        const exec = await vscode.tasks.executeTask(creusotProve)
+    })
     const client = startServer();
 }
