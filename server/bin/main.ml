@@ -64,7 +64,6 @@ class lsp_server =
     method! on_req_initialize ~notify_back params =
       let open Lsp.Types in
       rootUri := params.rootUri;
-      let* _ = match params.rootUri with Some root -> log_info notify_back @@ DocumentUri.to_string root in
       let* () = match params.InitializeParams.workspaceFolders with
         | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
           Creusot_lsp.Why3session.collect_sessions
@@ -167,7 +166,7 @@ class lsp_server =
 
     method! config_inlay_hints = None (* Some (`InlayHintOptions (InlayHintOptions.create ())) *)
 
-    method! on_req_inlay_hint ~notify_back ~id ~uri ~range () =
+    method! on_req_inlay_hint ~notify_back ~id:_ ~uri ~range:_ () =
       if false then (
       let* _ = log_info notify_back "req inlay hint" in
       match Hashtbl.find_opt funhooks uri with
