@@ -38,7 +38,15 @@
         {
             "type": "creusot"
         }
-    ]
+    ],
+    "menus": {
+        "editor/context": [
+            {
+                "command": "creusot.why3ide",
+                "group": "2_creusot"
+            }
+        ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run build-base -- --minify",
