@@ -88,12 +88,61 @@ class lsp_server =
             ])
           () in
         let reg_params = RegistrationParams.create ~registrations:[file_watcher_registration] in
-        let* _req_id = notify_back#send_request (ClientRegisterCapability reg_params) (fun result -> Lwt.return ()) in
+        let* _req_id = notify_back#send_request (ClientRegisterCapability reg_params) (fun _result -> Lwt.return ()) in
         Lwt.return ()
-      | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s self#refresh_file changes
+      | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s (self#refresh_proof ~notify_back) changes
       | notif -> super#on_notification_unhandled ~notify_back notif
 
-    method private refresh_file change = Lwt.return () (* TODO *)
+    method private refresh_proof ~notify_back change =
+      match change.type_ with
+      | Created | Changed ->
+          Creusot_lsp.Why3session.process_why3session_path (DocumentUri.to_path change.uri);
+          self#refresh_all ~notify_back
+      | _ -> Lwt.return ()
+
+    val files_with_diags : (DocumentUri.t, unit) Hashtbl.t = Hashtbl.create 32
+
+    method private refresh_all ~notify_back : _ t =
+      let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _result -> Lwt.return ()) in
+      Hashtbl.to_seq files_with_diags |> List.of_seq |>
+        Lwt_list.iter_s (fun (uri, _) ->
+          notify_back#set_uri uri; (* This is disgusting *)
+          self#update_diagnostics ~notify_back uri)
+
+    method private update_diagnostics ~notify_back uri =
+      match Hashtbl.find_opt funhooks uri with
+      | None -> Lwt.return ()
+      | Some doc ->
+        let* diags = doc.defns |> Lwt_list.filter_map_s (fun (qname, range) ->
+            let th_name = Creusot_lsp.Why3session.theory_of_path (doc.package :: doc.module_ :: qname) in
+            let* _ = log_info notify_back (Printf.sprintf "%s" th_name) in
+            let th_opt = Creusot_lsp.Why3session.get_theory th_name in
+            let lwt_option_bind f = function
+              | None -> Lwt.return None
+              | Some x -> f x in
+            th_opt |> lwt_option_bind @@ fun th ->
+              let n_goals = Array.length th.Creusot_lsp.Types.unproved_goals in
+              let why3session_path = DocumentUri.of_path th.Creusot_lsp.Types.path in
+              let source = "creusot" in
+              if n_goals = 0 then
+                let message = "QED" in
+                let severity = DiagnosticSeverity.Information in
+                Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ())
+              else
+                let message = Printf.sprintf "%d unproved goals" n_goals in
+                let severity = DiagnosticSeverity.Warning in
+                let dummy_pos = Position.create ~line:1 ~character:1 in
+                let dummy_pos' = Position.create ~line:1 ~character:2 in
+                let tgt_range = Range.create ~start:dummy_pos ~end_:dummy_pos' in
+                let relatedInformation = Array.to_list @@ Array.map (fun goal -> DiagnosticRelatedInformation.create
+                    ~location:(Location.create
+                      ~uri:why3session_path
+                      ~range:tgt_range)
+                    ~message:goal.Creusot_lsp.Types.goal_name
+                  ) th.Creusot_lsp.Types.unproved_goals in
+                Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()))
+        in
+        notify_back#send_diagnostic diags
 
     (* We define here a helper method that will:
        - process a document
@@ -101,48 +150,17 @@ class lsp_server =
        - return the diagnostics from the new state
     *)
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
-        (uri : Lsp.Types.DocumentUri.t) (_contents : string) =
-        match Hashtbl.find_opt funhooks uri with
-        | None -> Lwt.return ()
-        | Some doc ->
-          let* diags = doc.defns |> Lwt_list.filter_map_s (fun (qname, range) ->
-              let th_name = Creusot_lsp.Why3session.theory_of_path (doc.package :: doc.module_ :: qname) in
-              let* _ = log_info notify_back (Printf.sprintf "%s" th_name) in
-              let th_opt = Creusot_lsp.Why3session.get_theory th_name in
-              let lwt_option_bind f = function
-                | None -> Lwt.return None
-                | Some x -> f x in
-              th_opt |> lwt_option_bind @@ fun th ->
-                let n_goals = Array.length th.Creusot_lsp.Types.unproved_goals in
-                let why3session_path = DocumentUri.of_path th.Creusot_lsp.Types.path in
-                let source = "creusot" in
-                if n_goals = 0 then
-                  let message = "QED" in
-                  let severity = DiagnosticSeverity.Information in
-                  Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ())
-                else
-                  let message = Printf.sprintf "%d unproved goals" n_goals in
-                  let severity = DiagnosticSeverity.Warning in
-                  let dummy_pos = Position.create ~line:1 ~character:1 in
-                  let dummy_pos' = Position.create ~line:1 ~character:2 in
-                  let tgt_range = Range.create ~start:dummy_pos ~end_:dummy_pos' in
-                  let relatedInformation = Array.to_list @@ Array.map (fun goal -> DiagnosticRelatedInformation.create
-                      ~location:(Location.create
-                        ~uri:why3session_path
-                        ~range:tgt_range)
-                      ~message:goal.Creusot_lsp.Types.goal_name
-                    ) th.Creusot_lsp.Types.unproved_goals in
-                  Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()))
-          in
-          notify_back#send_diagnostic diags
+        ?languageId
+        (uri : Lsp.Types.DocumentUri.t) (content : string) =
+        self#refresh_file ~languageId uri ~content;
+        self#update_diagnostics ~notify_back uri
 
-    method private refresh_lenses ?languageId (uri : DocumentUri.t) ~content =
+    method private refresh_file ?languageId (uri : DocumentUri.t) ~content =
       let rusty = match languageId with
-        | Some "rust" -> true
+        | Some (Some "rust") -> true
         | Some _ -> false
-        | None -> match Hashtbl.find_opt funhooks uri with (* if we did refresh the lenses once it must have been rust *)
-          | Some _ -> true
-          | None -> false in
+        | None -> Hashtbl.mem funhooks uri
+      in
       if rusty then (
         let package = Creusot_lsp.Why3session.get_package_name () in
         let module_ = uri |> DocumentUri.to_path |> Filename.basename |> Filename.remove_extension in
@@ -159,14 +177,13 @@ class lsp_server =
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
-      self#refresh_lenses ~languageId:d.languageId d.uri ~content;
-      self#_on_doc ~notify_back d.uri content
+      Hashtbl.add files_with_diags d.uri ();
+      self#_on_doc ~notify_back ~languageId:d.languageId d.uri content
 
     (* Similarly, we also override the [on_notify_doc_did_change] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_change ~notify_back d _c ~old_content:_old
         ~new_content =
-      self#refresh_lenses d.uri ~content:new_content;
       self#_on_doc ~notify_back d.uri new_content
 
     (* On document closes, we remove the state associated to the file from the global

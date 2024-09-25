@@ -77,7 +77,11 @@ export function activate(context: ExtensionContext) {
     })
     /* Launch Why3 IDE */
     const why3ide = new vscode.Task(
-        { type: "shell" },
+        {
+            type: "shell",
+            command: "cargo",
+            args: ["creusot", "why3", "ide"]
+        },
         vscode.TaskScope.Workspace,
         "Launch Why3 IDE",
         "creusot",
@@ -89,7 +93,11 @@ export function activate(context: ExtensionContext) {
 
     /* Why3find Prove */
     const creusotProve = new vscode.Task(
-        { type: "shell" },
+        {
+            type: "shell",
+            command: "why3find",
+            "args": ["prove", "--package", "prelude", "target/*.coma"]
+        },
         vscode.TaskScope.Workspace,
         "Why3find Prove",
         "creusot",

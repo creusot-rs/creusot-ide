@@ -57,12 +57,15 @@ let parse_why3session path : tree option =
     let data _ = `Skip in
     Some (snd (Xmlm.input_doc_tree ~el ~data input))
 
+let process_why3session_path path =
+  match parse_why3session path with
+  | Some why3session -> process_why3session path why3session
+  | None -> ()
+
 let collect_sessions_for ~root ~crate =
   let (/) = Filename.concat in
-  let why3session_path = root / "target" / (crate ^ "-lib") / "why3session.xml" in
-  match parse_why3session why3session_path with
-  | Some why3session -> process_why3session why3session_path why3session
-  | None -> ()
+  let path = root / "target" / (crate ^ "-lib") / "why3session.xml" in
+  process_why3session_path path
 
 let find_rust_crate root =
   let (/) = Filename.concat in
