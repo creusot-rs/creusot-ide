@@ -73,6 +73,28 @@ class lsp_server =
       in
       super#on_req_initialize ~notify_back params
 
+    method! on_notification_unhandled ~notify_back = function
+      | Initialized ->
+        (* We can start registering capabilities after receiving the Initialized notification. *)
+        let file_watcher_registration = Registration.create
+          ~id:"fileWatcher"
+          ~method_:"workspace/didChangeWatchedFiles"
+          ~registerOptions:(`Assoc [
+              "watchers", `List [
+                `Assoc [
+                  "globPattern", `String "**/{why3session.xml,proof.json}";
+                ]
+              ]
+            ])
+          () in
+        let reg_params = RegistrationParams.create ~registrations:[file_watcher_registration] in
+        let* _req_id = notify_back#send_request (ClientRegisterCapability reg_params) (fun result -> Lwt.return ()) in
+        Lwt.return ()
+      | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s self#refresh_file changes
+      | notif -> super#on_notification_unhandled ~notify_back notif
+
+    method private refresh_file change = Lwt.return () (* TODO *)
+
     (* We define here a helper method that will:
        - process a document
        - store the state resulting from the processing
