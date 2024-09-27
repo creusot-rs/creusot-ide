@@ -1,8 +1,6 @@
 open Types
 
 let theories : theories_map = Hashtbl.create 32
-let package_name = ref ""
-let get_package_name () = !package_name
 
 type tree
   = [
@@ -67,19 +65,8 @@ let collect_sessions_for ~root ~crate =
   let path = root / "target" / (crate ^ "-lib") / "why3session.xml" in
   process_why3session_path path
 
-let find_rust_crate root =
-  let (/) = Filename.concat in
-  try
-    match Toml.Parser.from_filename (root / "Cargo.toml") with
-    | `Error _ -> None
-    | `Ok file ->
-      let name_opt = Toml.Lenses.(get file (field "package" |-- key "name" |-- string)) in
-      Option.iter (fun name -> package_name := name) name_opt;
-      name_opt
-  with Sys_error _ -> None
-
 let collect_sessions ~root =
-  match find_rust_crate root with
+  match Cargo.find_rust_crate root with
   | None -> ()
   | Some crate -> collect_sessions_for ~root ~crate
 

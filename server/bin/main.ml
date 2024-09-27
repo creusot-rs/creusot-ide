@@ -66,8 +66,15 @@ class lsp_server =
       rootUri := params.rootUri;
       let* () = match params.InitializeParams.workspaceFolders with
         | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
-          Creusot_lsp.Why3session.collect_sessions
-            ~root:(DocumentUri.to_path folder.WorkspaceFolder.uri);
+          let root = DocumentUri.to_path folder.WorkspaceFolder.uri in
+          let open Creusot_lsp in
+          let () =
+            Cargo.find_rust_crate root |> Option.iter @@ fun crate ->
+              (* Why3session.collect_sessions_for ~root ~crate; *)
+              let (/) = Filename.concat in
+              Why3find.read_proof_json ~fname:(root / "target" / (crate ^ "-lib") / "proof.json")
+                |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
+          in
           log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
         | _ -> Lwt.return ()
       in
@@ -96,7 +103,13 @@ class lsp_server =
     method private refresh_proof ~notify_back change =
       match change.type_ with
       | Created | Changed ->
-          Creusot_lsp.Why3session.process_why3session_path (DocumentUri.to_path change.uri);
+          let path = DocumentUri.to_path change.uri in
+          let base = Filename.basename path in
+          if base = "why3session.xml" then
+            Creusot_lsp.Why3session.process_why3session_path path
+          else if base = "proof.json" then
+            Creusot_lsp.Why3find.read_proof_json ~fname:path |> List.iter (fun (name, thy) ->
+              Creusot_lsp.Why3session.add_thy name thy);
           self#refresh_all ~notify_back
       | _ -> Lwt.return ()
 
@@ -162,7 +175,7 @@ class lsp_server =
         | None -> Hashtbl.mem funhooks uri
       in
       if rusty then (
-        let package = Creusot_lsp.Why3session.get_package_name () in
+        let package = Creusot_lsp.Cargo.get_package_name () in
         let module_ = uri |> DocumentUri.to_path |> Filename.basename |> Filename.remove_extension in
         let names = Creusot_lsp.Hacky_rs_parser.list_names (Lexing.from_string content) in
         let defns = names |> List.map (fun (qname, span) ->

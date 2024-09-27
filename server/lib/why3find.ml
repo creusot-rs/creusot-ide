@@ -36,4 +36,4 @@ let parse_proof_json ~fname contents =
   from_proof_json fname (Yojson.Safe.from_string ~fname contents)
 
 let read_proof_json ~fname =
-  from_proof_json fname (Yojson.Safe.from_string fname)
+  from_proof_json fname (Yojson.Safe.from_file fname)
