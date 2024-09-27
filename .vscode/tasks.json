@@ -1,35 +1,41 @@
 {
 	"version": "2.0.0",
 	"tasks": [
-		{
-			"label": "Build Server",
-			"type": "dune",
-			"problemMatcher": [
-				"$ocamlc"
-			],
-			"group": "build",
-		},
         {
-			"label": "Build Extension",
-			"group": "build",
-			"type": "npm",
-			"script": "build",
-			"path": "vscode/",
-			"problemMatcher": {
-				"base": "$tsc",
-				"fileLocation": [
-					"relative",
-					"${workspaceFolder}/vscode/"
-				]
-			}
-		},
+            "label": "Build Server",
+            "type": "dune",
+            "problemMatcher": [
+                "$ocamlc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "Build Extension",
+            "group": "build",
+            "type": "npm",
+            "script": "build",
+            "path": "vscode/",
+            "problemMatcher": {
+                "base": "$tsc",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/vscode/"
+                ]
+            }
+        },
         {
             "label": "Build Server and Extension",
             "dependsOn": [
                 "Build Server",
                 "Build Extension"
             ],
-            "problemMatcher":[ "$ocamlc", "$tsc" ]
-        },
+            "problemMatcher": [
+                "$ocamlc",
+                "$tsc"
+            ]
+        }
     ]
 }
