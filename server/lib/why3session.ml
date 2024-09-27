@@ -109,3 +109,5 @@ let encode_path (s : string list) =
     |> String.concat "__"
 
 let theory_of_path (s : string list) = "M_" ^ encode_path s
+
+let add_thy name thy = Hashtbl.add theories name thy
