@@ -22,6 +22,7 @@ const languages = [
     { scheme: "file", language: "rust" },
     { scheme: "file", language: "coma" },
     { scheme: "file", language: "why3session" },
+    { scheme: "file", language: "why3proof" },
 ];
 
 function startServer() : LanguageClient {
