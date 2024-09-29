@@ -1,6 +1,7 @@
 (lang dune 2.7)
 (name creusot-lsp)
 (version dev)
+(using menhir 2.1)
 
 (package
  (name "creusot-lsp")

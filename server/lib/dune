@@ -16,7 +16,14 @@
   ppx_deriving_yojson.runtime
   ppx_deriving
   xmlm)
+ (inline_tests)
  (preprocess
-  (pps ppx_deriving.show ppx_deriving_yojson))
+  (pps ppx_deriving.show ppx_deriving_yojson ppx_expect))
  (modules_without_implementation types))
-(ocamllex hacky_rs_parser)
+(ocamllex
+ hacky_coma_parser
+ hacky_rs_parser
+ proof_json_parser
+ creusot_demangler)
+(menhir
+ (modules rust_parser))
