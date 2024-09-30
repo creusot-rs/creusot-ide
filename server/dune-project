@@ -8,5 +8,11 @@
  (synopsis "Language server for Creusot")
  (depends
   "why3"
-  "ocaml-lsp")
+  "ocaml-lsp-server"
+  "lwt"
+  "linol"
+  "linol-lwt"
+  "toml"
+  "xmlm"
+  "uri")
  (authors "Li-yao Xia"))

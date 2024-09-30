@@ -7,18 +7,16 @@
   linol-lwt
   lwt
   lsp
-  jsonrpc
   why3
   uri
   toml
   yojson
   lwt.unix
-  ppx_deriving_yojson.runtime
   ppx_deriving
   xmlm)
  (inline_tests)
  (preprocess
-  (pps ppx_deriving.show ppx_deriving_yojson ppx_expect))
+  (pps ppx_deriving.show ppx_expect))
  (modules_without_implementation types))
 (ocamllex
  hacky_coma_parser
