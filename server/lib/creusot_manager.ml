@@ -55,7 +55,7 @@ let rec insert_trie (trie : trie) (path : Rust_syntax.def_path) (p : loc_ident) 
   | Other ident :: rest ->
       let t = match Hashtbl.find_opt trie.ident_map ident with
       | Some t -> t
-      | None -> let t = new_trie () in Hashtbl.add trie.ident_map ident (new_trie ());
+      | None -> let t = new_trie () in Hashtbl.add trie.ident_map ident t;
                 t in
       insert_trie t rest p
   | Impl impl :: rest ->
