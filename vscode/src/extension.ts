@@ -15,7 +15,7 @@ import { access, existsSync } from "fs";
 import { runInContext } from "vm";
 
 const server : Executable = {
-    command: "/home/sam/rust/cide/_build/default/server/bin/main.exe",
+    command: "/home/sam/rust/cide/server/_build/default/bin/main.exe",
 }
 
 const languages = [
