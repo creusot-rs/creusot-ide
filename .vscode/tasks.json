@@ -3,7 +3,9 @@
 	"tasks": [
         {
             "label": "Build Server",
-            "type": "dune",
+            "type": "shell",
+            "command": "dune",
+            "args": ["build", "--root=server"],
             "problemMatcher": [
                 "$ocamlc"
             ],
