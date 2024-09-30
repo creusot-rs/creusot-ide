@@ -1,4 +1,5 @@
 open Linol_lwt
+open Creusot_lsp
 
 module Log = (val Logs.src_log Logs.Src.(create "creusotlsp"))
 
@@ -127,7 +128,7 @@ class lsp_server =
       | None -> Lwt.return ()
       | Some doc ->
         let* diags = doc.defns |> Lwt_list.filter_map_s (fun (qname, range) ->
-            let th_name = Creusot_lsp.Why3session.theory_of_path (doc.package :: doc.module_ :: qname) in
+            let th_name = Creusot_manager.lookup_def_path (Other doc.package :: Other doc.module_ :: qname) in
             let* _ = log_info notify_back (Printf.sprintf "%s" th_name) in
             let th_opt = Creusot_lsp.Why3session.get_theory th_name in
             let lwt_option_bind f = function

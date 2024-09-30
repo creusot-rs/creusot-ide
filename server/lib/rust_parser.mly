@@ -9,11 +9,12 @@
 %token UNIT
 %token COLONCOLON
 %token AS
+%token FOR
 %token EOF
 
-%start ty0 impl_subject0
+%start ty0 impl_subject0 impl_subject1
 
-%type <impl_subject> impl_subject0
+%type <impl_subject> impl_subject0 impl_subject1;
 %type <ty> ty0 ty
 %type <ty list> tys
 %type <qualid> qualid
@@ -23,6 +24,14 @@
 impl_subject0:
 | LANGLE ty AS ty RANGLE EOF { Trait ($4, $2) }
 | ty EOF { Inherent $1 }
+
+impl_subject1:
+| ty FOR ty EOF { Trait ($1, $3) }
+| ty_binder ty FOR ty EOF { Trait ($2, $4) }
+| ty EOF { Inherent $1 }
+
+ty_binder:
+| LANGLE separated_list(COMMA, IDENT) RANGLE { () }
 
 ty0:
 | ty EOF { $1 }

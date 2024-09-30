@@ -1,4 +1,5 @@
 {
+open Lsp.Types
 open Rust_syntax
 open Rust_parser
 
@@ -14,7 +15,7 @@ let line_incs s lexbuf =
       Lexing.pos_bol = if List.length splits > 1 then pos.Lexing.pos_cnum - (String.length (List.hd (List.rev splits))) else pos.Lexing.pos_bol
   }
 
-type loc_ident = { ident: string; line: int; begin_col: int; end_col: int }
+type loc_ident = { ident: string; loc: Location.t }
 
 let new_module ?impl modname acc =
     let open Creusot_demangler in
@@ -35,9 +36,11 @@ rule coma acc = parse
         let begin_col = end_col - String.length modname in
         let modident = {
             ident = modname;
-            line = lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum;
-            begin_col;
-            end_col;
+            loc = Location.create
+                ~range:(Range.create
+                    ~start:(Position.create ~line:lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum ~character:begin_col)
+                     ~end_:(Position.create ~line:lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum ~character:end_col))
+                ~uri:(DocumentUri.of_path lexbuf.Lexing.lex_curr_p.Lexing.pos_fname)
         } in
         coma_module_meta acc modident lexbuf
     }
@@ -74,7 +77,7 @@ and rust_lexer end_flag = parse
     | "::" { COLONCOLON }
     | "as" { AS }
     | "*)" { end_flag := true; EOF }
-    | ' '* { rust_lexer end_flag lexbuf }
+    | ' '+ { rust_lexer end_flag lexbuf }
 
 {
     let parse_coma_string str = try coma [] (Lexing.from_string str) with _ -> []

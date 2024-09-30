@@ -1,4 +1,6 @@
 {
+open Rust_parser
+
 (* Function to increase line count in lexbuf *)
 let line_incs s lexbuf =
 (*  Printf.printf "Read: %s\n" s; *)
@@ -58,8 +60,37 @@ rule rust = parse
         funnames := (mk_name name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
     | '}' { pop_stack (); rust lexbuf }
+    | "impl" white+ {
+        line_incs (Lexing.lexeme lexbuf) lexbuf;
+        let end_flag = ref false in
+        match Rust_parser.impl_subject0 (rust_lexer end_flag) lexbuf with
+        | impl ->
+            let acc = new_module ~impl modident acc in
+            coma acc lexbuf
+        | exception _ ->
+            let acc = new_module modident acc in
+            if !end_flag then rust lexbuf
+            else rust_impl_end lexbuf
+    }
     | _ { rust lexbuf }
     | eof { () }
+
+and rust_impl_end = parse
+    | "{" {
+        rust lexbuf
+    }
+
+and rust_lexer end_flag = parse
+    | ident { IDENT (Lexing.lexeme lexbuf) }
+    | '<' { LANGLE }
+    | '>' { RANGLE }
+    | ',' { COMMA }
+    | "()" { UNIT }
+    | "::" { COLONCOLON }
+    | "for" { FOR }
+    | "{" { end_flag := true; EOF }
+    | white+ { line_incs (Lexing.lexeme lexbuf) lexbuf; rust_lexer end_flag lexbuf }
+
 
 {
 let list_names lexbuf =
