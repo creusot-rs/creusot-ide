@@ -26,11 +26,11 @@ impl_subject0:
 | ty EOF { Inherent $1 }
 
 impl_subject1:
-| ty FOR ty EOF { Trait ($1, $3) }
-| ty_binder ty FOR ty EOF { Trait ($2, $4) }
-| ty EOF { Inherent $1 }
+| ty_binder trait=ty FOR t=ty EOF { Trait (trait, t) }
+| ty_binder t=ty EOF { Inherent t }
 
 ty_binder:
+| { () }
 | LANGLE separated_list(COMMA, IDENT) RANGLE { () }
 
 ty0:
@@ -49,3 +49,15 @@ tys:
 qualid:
 | IDENT { { unqual = $1; qualifier = [] } }
 | qualid COLONCOLON IDENT { let { unqual = i; qualifier = j } = $1 in { unqual = $3; qualifier = i :: j } }
+%%
+
+let string_of_token = function
+    | IDENT s -> Printf.sprintf "IDENT %s" s
+    | LANGLE -> "LANGLE"
+    | RANGLE -> "RANGLE"
+    | COMMA -> "COMMA"
+    | UNIT -> "UNIT"
+    | COLONCOLON -> "COLONCOLON"
+    | FOR -> "FOR"
+    | EOF -> "EOF"
+    | AS -> "AS"

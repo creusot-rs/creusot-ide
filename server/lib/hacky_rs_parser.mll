@@ -66,10 +66,10 @@ rule rust = parse
         funnames := (mk_name name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
     | '}' { pop_stack (); rust lexbuf }
-    | "impl" white+ {
+    | "impl" white* {
         line_incs (Lexing.lexeme lexbuf) lexbuf;
         let end_flag = ref false in
-        match Rust_parser.impl_subject0 (rust_lexer end_flag) lexbuf with
+        match Rust_parser.impl_subject1 (rust_lexer end_flag) lexbuf with
         | impl -> push_impl (Some impl); rust lexbuf
         | exception _ -> push_impl None;
             if !end_flag then rust lexbuf
