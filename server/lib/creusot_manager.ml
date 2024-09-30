@@ -69,26 +69,27 @@ let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident opti
   match path with
   | [] -> trie.coma_loc_ident
   | Other ident :: rest ->
-      let t = match Hashtbl.find_opt trie.ident_map ident with
-      | Some t -> t
-      | None -> let t = new_trie () in Hashtbl.add trie.ident_map ident (new_trie ());
-                t in
-      lookup_trie t rest
+      Option.bind (Hashtbl.find_opt trie.ident_map ident)
+        (fun t -> lookup_trie t rest)
   | Impl impl :: rest ->
-      let t = match List.find_opt (fun (i, _) -> unify_impl_subject impl i) trie.impl_map with
-      | Some (_, t) -> t
-      | None -> let t = new_trie () in trie.impl_map <- (impl, t) :: trie.impl_map;
-                t in
-      lookup_trie t rest
+      Option.bind (List.find_opt (fun (i, _) -> unify_impl_subject impl i) trie.impl_map)
+        (fun (_, t) -> lookup_trie t rest)
 
-let insert_def_path = insert_trie global_trie
-let lookup_def_path = lookup_trie global_trie
+let m = Mutex.create ()
+
+let insert_def_path d =
+  Mutex.protect m (fun () ->
+  Debug.debug (Printf.sprintf "insert_def_path: %s" (Rust_syntax.string_of_def_path d));
+   insert_trie global_trie d)
+let lookup_def_path d =
+  Mutex.protect m (fun () -> lookup_trie global_trie d)
 
 let coma_lexbuf lexbuf =
   let open Hacky_coma_parser in
   match coma [] lexbuf with
-  | acc -> List.iter (fun (name, path) -> insert_demangle name.ident path; insert_def_path path name) acc
-  | exception _ -> ()
+  | acc ->
+    List.iter (fun (name, path) -> insert_demangle name.ident path; insert_def_path path name) acc
+  | exception _ -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname)
 
 let coma_file (path : string) : unit =
   let h = open_in path in
@@ -110,17 +111,17 @@ type rust_doc = {
 
 let rust_files : (string, rust_doc) Hashtbl.t = Hashtbl.create 16
 
+let span_to_range (start, stop) =
+  Lsp.Types.Range.create
+    ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
+    ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol))
+
 let rust_lexbuf ~package ~path lexbuf =
   let open Hacky_rs_parser in
   match list_names lexbuf with
   | names ->
     let module_ = path |> Filename.basename |> Filename.remove_extension in
-    let defns = names |> List.map (fun (qname, span) ->
-          let span_to_range (start, stop) =
-            Lsp.Types.Range.create
-              ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
-              ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
-          (qname, span_to_range span)) in
+    let defns = names |> List.map (fun (def_path, span) -> (def_path, span_to_range span)) in
     Hashtbl.add rust_files path { package; module_; defns }
   | exception _ -> ()
 

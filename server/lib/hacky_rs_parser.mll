@@ -71,7 +71,8 @@ rule rust = parse
         let end_flag = ref false in
         match Rust_parser.impl_subject1 (rust_lexer end_flag) lexbuf with
         | impl -> push_impl (Some impl); rust lexbuf
-        | exception _ -> push_impl None;
+        | exception _ ->
+            push_impl None;
             if !end_flag then rust lexbuf
             else rust_impl_start lexbuf
     }

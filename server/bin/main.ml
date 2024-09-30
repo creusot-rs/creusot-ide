@@ -67,14 +67,15 @@ class lsp_server =
         | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
           let root = DocumentUri.to_path folder.WorkspaceFolder.uri in
           let open Creusot_lsp in
-          let () =
+          let* () = Debug.debug_handler (fun () ->
           Creusot_manager.read_cargo ~root;
             let crate = Creusot_manager.get_package_name () in
             (* Why3session.collect_sessions_for ~root ~crate; *)
             let (/) = Filename.concat in
             Creusot_manager.coma_file (root / "target" / (crate ^ "-lib.coma"));
             Why3find.read_proof_json ~fname:(root / "target" / (crate ^ "-lib") / "proof.json")
-              |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
+              |> List.iter (fun (name, thy) -> Why3session.add_thy name thy))
+              (log_info notify_back)
           in
           log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
         | _ -> Lwt.return ()
@@ -142,8 +143,8 @@ class lsp_server =
         in
         Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()
       in
-      let diags = Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
-          |> List.map to_lsp_diagnostics in
+      let* diags = Debug.debug_handler (fun () -> Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
+          |> List.map to_lsp_diagnostics) (fun msg -> log_info notify_back msg) in
       notify_back#send_diagnostic diags
 
     (* We define here a helper method that will:
@@ -154,7 +155,7 @@ class lsp_server =
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
         ?languageId
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
-        self#refresh_file ~languageId uri ~content;
+        let* () = Debug.debug_handler (fun () -> self#refresh_file ~languageId uri ~content) (log_info notify_back) in
         self#update_diagnostics ~notify_back uri
 
     method private refresh_file ?languageId (uri : DocumentUri.t) ~content =
@@ -190,7 +191,7 @@ class lsp_server =
         workDoneProgress = Some false;
       }
 
-    method! on_req_code_lens ~notify_back:_ ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
+    method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
       let to_lsp_lenses d =
         let open Creusot_manager.RustDiagnostic in
         let range = d.range in
@@ -208,8 +209,8 @@ class lsp_server =
         in
         CodeLens.create ~command ~range ()
       in
-      let lenses = Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
-          |> List.map to_lsp_lenses in
+      let* lenses = Debug.debug_handler (fun () -> Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
+          |> List.map to_lsp_lenses) (log_info notify_back) in
       Lwt.return lenses
   end
 
