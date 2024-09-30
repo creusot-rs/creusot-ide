@@ -96,11 +96,82 @@ let coma_file (path : string) : unit =
   let h = open_in path in
   let lexbuf = Lexing.from_channel h in
   Lexing.set_filename lexbuf path;
-  let res = coma_lexbuf lexbuf in
-  close_in h;
-  res
+  coma_lexbuf lexbuf;
+  close_in h
 
-let coma_file_string ~path (s : string) : unit =
+let coma_file_as_string ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
   Lexing.set_filename lexbuf path;
   coma_lexbuf lexbuf
+
+type rust_doc = {
+  package: string;
+  module_: string;
+  defns: (Rust_syntax.def_path * Lsp.Types.Range.t) list;
+}
+
+let rust_files : (string, rust_doc) Hashtbl.t = Hashtbl.create 16
+
+let rust_lexbuf ~package ~path lexbuf =
+  let open Hacky_rs_parser in
+  match list_names lexbuf with
+  | names ->
+    let module_ = path |> Filename.basename |> Filename.remove_extension in
+    let defns = names |> List.map (fun (qname, span) ->
+          let span_to_range (start, stop) =
+            Lsp.Types.Range.create
+              ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
+              ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
+          (qname, span_to_range span)) in
+    Hashtbl.add rust_files path { package; module_; defns }
+  | exception _ -> ()
+
+let rust_file ~package (path : string) : unit =
+  let h = open_in path in
+  let lexbuf = Lexing.from_channel h in
+  Lexing.set_filename lexbuf path;
+  rust_lexbuf ~package ~path lexbuf;
+  close_in h
+
+let rust_file_as_string ~package ~path (s : string) : unit =
+  let lexbuf = Lexing.from_string s in
+  Lexing.set_filename lexbuf path;
+  rust_lexbuf ~package ~path lexbuf
+
+let package_name = ref ""
+
+let read_cargo ~root =
+  match Cargo.find_rust_crate root with
+  | None -> ()
+  | Some crate -> package_name := crate
+
+let get_package_name () = !package_name
+
+module RustDiagnostic = struct
+  type status = Qed | ToProve of (string * Location.t) array
+  type t = {
+      range: Range.t;
+      status: status;
+  }
+end
+
+let status_of_thy thy =
+  let open Types in
+  let open RustDiagnostic in
+  if Array.length thy.unproved_goals = 0 then
+    Qed
+  else
+    let dummy_position = Position.create ~line:0 ~character:0 in
+    let dummy_range = Range.create ~start:dummy_position ~end_:dummy_position in
+    let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
+    ToProve (Array.map from_goal thy.unproved_goals)
+
+let get_rust_diagnostics ~path =
+  match Hashtbl.find_opt rust_files path with
+  | None -> []
+  | Some doc ->
+    doc.defns |> List.filter_map @@ fun (def_path, range) ->
+      let (let+) = Option.bind in
+      let+ loc_ident = lookup_def_path (Other doc.package :: Other doc.module_ :: def_path) in
+      let+ thy = Why3session.get_theory loc_ident.Hacky_coma_parser.ident in
+      Some RustDiagnostic.{ range; status = status_of_thy thy }

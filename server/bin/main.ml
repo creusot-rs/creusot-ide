@@ -52,9 +52,6 @@ class lsp_server =
     val buffers : (Lsp.Types.DocumentUri.t, state_after_processing) Hashtbl.t =
       Hashtbl.create 32
 
-    val funhooks : (Lsp.Types.DocumentUri.t, doc) Hashtbl.t =
-      Hashtbl.create 32
-
     val rootUri : DocumentUri.t option ref = ref None
     method private mk_relative_path p =
       match !rootUri with
@@ -71,11 +68,12 @@ class lsp_server =
           let root = DocumentUri.to_path folder.WorkspaceFolder.uri in
           let open Creusot_lsp in
           let () =
-            Cargo.find_rust_crate root |> Option.iter @@ fun crate ->
-              (* Why3session.collect_sessions_for ~root ~crate; *)
-              let (/) = Filename.concat in
-              Why3find.read_proof_json ~fname:(root / "target" / (crate ^ "-lib") / "proof.json")
-                |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
+          Creusot_manager.read_cargo ~root;
+            let crate = Creusot_manager.get_package_name () in
+            (* Why3session.collect_sessions_for ~root ~crate; *)
+            let (/) = Filename.concat in
+            Why3find.read_proof_json ~fname:(root / "target" / (crate ^ "-lib") / "proof.json")
+              |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
           in
           log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
         | _ -> Lwt.return ()
@@ -125,42 +123,25 @@ class lsp_server =
           self#update_diagnostics ~notify_back uri)
 
     method private update_diagnostics ~notify_back uri =
-      match Hashtbl.find_opt funhooks uri with
-      | None -> Lwt.return ()
-      | Some doc ->
-        let lwt_option_bind f = function
-          | None -> Lwt.return None
-          | Some x -> f x in
-        let* diags = doc.defns |> Lwt_list.filter_map_s (fun ((qname, range) : def_path * _) ->
-            let open Rust_syntax in
-            let def_path = Other doc.package :: Other doc.module_ :: qname in
-            Creusot_manager.lookup_def_path def_path |> lwt_option_bind @@ fun th_name ->
-            let* _ = log_info notify_back (Printf.sprintf "%s: %s" (Rust_syntax.string_of_def_path def_path)
-              th_name.Hacky_coma_parser.ident) in
-            let th_opt = Creusot_lsp.Why3session.get_theory th_name.Hacky_coma_parser.ident in
-            th_opt |> lwt_option_bind @@ fun th ->
-              let n_goals = Array.length th.Creusot_lsp.Types.unproved_goals in
-              let why3session_path = DocumentUri.of_path th.Creusot_lsp.Types.path in
-              let source = "creusot" in
-              if n_goals = 0 then
-                let message = "QED" in
-                let severity = DiagnosticSeverity.Information in
-                Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ())
-              else
-                let message = Printf.sprintf "%d unproved goals" n_goals in
-                let severity = DiagnosticSeverity.Warning in
-                let dummy_pos = Position.create ~line:1 ~character:1 in
-                let dummy_pos' = Position.create ~line:1 ~character:2 in
-                let tgt_range = Range.create ~start:dummy_pos ~end_:dummy_pos' in
-                let relatedInformation = Array.to_list @@ Array.map (fun goal -> DiagnosticRelatedInformation.create
-                    ~location:(Location.create
-                      ~uri:why3session_path
-                      ~range:tgt_range)
-                    ~message:goal.Creusot_lsp.Types.goal_name
-                  ) th.Creusot_lsp.Types.unproved_goals in
-                Lwt.return @@ Some (Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()))
+      let to_related_information (goal_name, location) =
+        DiagnosticRelatedInformation.create ~location ~message:goal_name
+      in
+      let to_lsp_diagnostics d =
+        let open Creusot_manager.RustDiagnostic in
+        let range = d.range in
+        let source = "creusot" in
+        let message, severity, relatedInformation = match d.status with
+          | Qed -> "QED", DiagnosticSeverity.Information, []
+          | ToProve goals ->
+              Printf.sprintf "%d unproved goals" (Array.length goals),
+              DiagnosticSeverity.Warning,
+              Array.(to_list (map to_related_information goals))
         in
-        notify_back#send_diagnostic diags
+        Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()
+      in
+      let diags = Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
+          |> List.map to_lsp_diagnostics in
+      notify_back#send_diagnostic diags
 
     (* We define here a helper method that will:
        - process a document
@@ -174,23 +155,14 @@ class lsp_server =
         self#update_diagnostics ~notify_back uri
 
     method private refresh_file ?languageId (uri : DocumentUri.t) ~content =
+      let package = Creusot_manager.get_package_name () in
+      let path = DocumentUri.to_path uri in
       let rusty = match languageId with
         | Some (Some "rust") -> true
         | Some _ -> false
-        | None -> Hashtbl.mem funhooks uri
+        | None -> Filename.check_suffix path ".rs"
       in
-      if rusty then (
-        let package = Creusot_lsp.Cargo.get_package_name () in
-        let module_ = uri |> DocumentUri.to_path |> Filename.basename |> Filename.remove_extension in
-        let names = Creusot_lsp.Hacky_rs_parser.list_names (Lexing.from_string content) in
-        let defns = names |> List.map (fun (qname, span) ->
-              let span_to_range (start, stop) =
-                Lsp.Types.Range.create
-                  ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
-                  ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol)) in
-              (qname, span_to_range span)) in
-        Hashtbl.add funhooks uri { package; module_; defns }
-      )
+      if rusty then Creusot_manager.rust_file_as_string ~package ~path content
 
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
@@ -215,46 +187,27 @@ class lsp_server =
         workDoneProgress = Some false;
       }
 
-    method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
-      match Hashtbl.find_opt funhooks uri with
-      | None -> Lwt.return []
-      | Some doc ->
-        let lwt_option_map f = function
-              | None -> Lwt.return None
-              | Some x -> Lwt.map (fun y -> Some y) (f x) in
-        let lwt_option_bind f = function
-          | None -> Lwt.return None
-          | Some x -> f x in
-        let* lenses = doc.defns |> Lwt_list.filter_map_s (fun ((qname, range) : def_path * _) ->
-          let open Rust_syntax in
-          let def_path = Other doc.package :: Other doc.module_ :: qname in
-          Creusot_manager.lookup_def_path def_path |> lwt_option_bind @@ fun th_name ->
-            let* _ = log_info notify_back (Printf.sprintf "%s: %s" (Rust_syntax.string_of_def_path def_path)
-              th_name.Hacky_coma_parser.ident) in
-            let th_opt = Creusot_lsp.Why3session.get_theory th_name.Hacky_coma_parser.ident in
-            th_opt |> lwt_option_map @@ fun th ->
-              let n_goals = Array.length th.Creusot_lsp.Types.unproved_goals in
-              let why3session_path = DocumentUri.of_path th.Creusot_lsp.Types.path in
-              let dummy_pos = Position.create ~line:1 ~character:1 in
-              let dummy_pos' = Position.create ~line:1 ~character:2 in
-              let tgt_range = Range.create ~start:dummy_pos ~end_:dummy_pos' in
-              let command = if n_goals = 0 then
-                  Lsp.Types.Command.create
-                    ~title:"QED"
-                    ~command:""
-                    ()
-                else Lsp.Types.Command.create
-                  ~title:(Printf.sprintf "%d unproved goals" n_goals)
-                  ~command:"creusot.peekLocations"
-                  ~arguments:[
-                    DocumentUri.yojson_of_t uri;
-                    Position.(yojson_of_t range.Range.start);
-                    `List [(Array.map (fun _ -> Location.(yojson_of_t @@ create ~range:tgt_range ~uri:why3session_path)) th.Creusot_lsp.Types.unproved_goals).(0)];
-                    `String "gotoAndPeek"]
-                    ()
-              in
-              Lwt.return @@ Lsp.Types.CodeLens.create ~command ~range ()) in
-        Lwt.return lenses
+    method! on_req_code_lens ~notify_back:_ ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
+      let to_lsp_lenses d =
+        let open Creusot_manager.RustDiagnostic in
+        let range = d.range in
+        let command = match d.status with
+          | Qed -> Command.create ~title:"QED" ~command:"" ()
+          | ToProve goals -> Command.create
+              ~title:(Printf.sprintf "%d unproved goals" (Array.length goals))
+              ~command:"creusot.peekLocations"
+              ~arguments:[
+                DocumentUri.yojson_of_t uri;
+                Position.(yojson_of_t range.Range.start);
+                `List (Array.(to_list (map (fun (_name, location) -> Location.yojson_of_t location) goals)));
+                `String "gotoAndPeek"]
+                ()
+        in
+        CodeLens.create ~command ~range ()
+      in
+      let lenses = Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
+          |> List.map to_lsp_lenses in
+      Lwt.return lenses
   end
 
 let run () =
