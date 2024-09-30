@@ -72,6 +72,7 @@ class lsp_server =
             let crate = Creusot_manager.get_package_name () in
             (* Why3session.collect_sessions_for ~root ~crate; *)
             let (/) = Filename.concat in
+            Creusot_manager.coma_file (root / "target" / (crate ^ "-lib.coma"));
             Why3find.read_proof_json ~fname:(root / "target" / (crate ^ "-lib") / "proof.json")
               |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
           in
@@ -89,7 +90,7 @@ class lsp_server =
           ~registerOptions:(`Assoc [
               "watchers", `List [
                 `Assoc [
-                  "globPattern", `String "**/{why3session.xml,proof.json}";
+                  "globPattern", `String "**/{why3session.xml,proof.json,*.coma}";
                 ]
               ]
             ])
@@ -109,7 +110,9 @@ class lsp_server =
             Creusot_lsp.Why3session.process_why3session_path path
           else if base = "proof.json" then
             Creusot_lsp.Why3find.read_proof_json ~fname:path |> List.iter (fun (name, thy) ->
-              Creusot_lsp.Why3session.add_thy name thy);
+              Creusot_lsp.Why3session.add_thy name thy)
+            else if Filename.check_suffix base ".coma" then
+              Creusot_manager.coma_file path;
           self#refresh_all ~notify_back
       | _ -> Lwt.return ()
 

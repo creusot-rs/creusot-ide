@@ -1,8 +1,6 @@
 open Lsp.Types
 open Hacky_coma_parser
 
-type proof_state = T
-
 type trie =
   { ident_map: (string, trie) Hashtbl.t;
     mutable coma_loc_ident: loc_ident option; (* Location in the coma file *)
