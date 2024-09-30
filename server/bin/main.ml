@@ -255,42 +255,6 @@ class lsp_server =
               in
               Lwt.return @@ Lsp.Types.CodeLens.create ~command ~range ()) in
         Lwt.return lenses
-
-    method! config_inlay_hints = None (* Some (`InlayHintOptions (InlayHintOptions.create ())) *)
-
-    method! on_req_inlay_hint ~notify_back ~id:_ ~uri ~range:_ () =
-      if false then (
-      let* _ = log_info notify_back "req inlay hint" in
-      match Hashtbl.find_opt funhooks uri with
-      | None -> Lwt.return None
-      | Some doc ->
-        let lwt_option_bind f = function
-          | None -> Lwt.return None
-          | Some x -> f x in
-        let lwt_option_map f = function
-          | None -> Lwt.return None
-          | Some x -> Lwt.map (fun y -> Some y) (f x) in
-        let* hints = doc.defns |> Lwt_list.filter_map_s (fun ((qname, range) : def_path * _) ->
-          let open Rust_syntax in
-          let def_path = Other doc.package :: Other doc.module_ :: qname in
-          Creusot_manager.lookup_def_path def_path |> lwt_option_bind @@ fun th_name ->
-            let* _ = log_info notify_back (Printf.sprintf "%s: %s" (Rust_syntax.string_of_def_path def_path)
-              th_name.Hacky_coma_parser.ident) in
-            let th_opt = Creusot_lsp.Why3session.get_theory th_name.Hacky_coma_parser.ident in
-            th_opt |> lwt_option_map @@ fun th ->
-              let position = range.Range.start in
-              let command = Lsp.Types.Command.create
-                ~title:"" (* unused *)
-                ~command:"creusot.openFile"
-                ~arguments:[`String th.Creusot_lsp.Types.path] () in
-              let to_hint_label goal = Lsp.Types.InlayHintLabelPart.create
-                  ~tooltip:(`String "Go to goal")
-                  ~command
-                  ~value:goal.Creusot_lsp.Types.goal_name () in
-              let label = `List (Array.to_list @@ Array.map to_hint_label th.Creusot_lsp.Types.unproved_goals) in
-              Lwt.return @@ Lsp.Types.InlayHint.create ~label ~position ()) in
-        Lwt.return (Some hints))
-      else Lwt.return None
   end
 
 let run () =
