@@ -1,18 +1,7 @@
 {
 open Rust_parser
 open Rust_syntax
-
-(* Function to increase line count in lexbuf *)
-let line_incs s lexbuf =
-(*  Printf.printf "Read: %s\n" s; *)
-  let splits = String.split_on_char '\n' s in
-  let pos = lexbuf.Lexing.lex_curr_p in
-(* Printf.printf "Was in line %d, position %d\n" pos.pos_lnum (pos.pos_cnum - pos.pos_bol); *)
-  lexbuf.Lexing.lex_curr_p <- {
-    pos with
-      Lexing.pos_lnum = pos.Lexing.pos_lnum + (List.length splits - 1);
-      Lexing.pos_bol = if List.length splits > 1 then pos.Lexing.pos_cnum - (String.length (List.hd (List.rev splits))) else pos.Lexing.pos_bol
-  }
+open Util.Lex
 
 let print_position p =
     Printf.eprintf "%s:%d:%d\n" p.Lexing.pos_fname p.Lexing.pos_lnum (p.Lexing.pos_cnum - p.Lexing.pos_bol)
@@ -54,20 +43,20 @@ let nonwhite = [^' ' '\t' '\n' '\r']
 let ident = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule rust = parse
-    | (white+ as s) { line_incs s lexbuf; rust lexbuf }
-    | ("mod" white+ (ident as modname) white* '{' as s) {
-        line_incs s lexbuf;
+    | white+ { line_incs lexbuf; rust lexbuf }
+    | "mod" white+ (ident as modname) white* '{' {
+        line_incs lexbuf;
         push_stack (Mod modname);
         rust lexbuf
     }
     | '{' { push_stack Curly; rust lexbuf }
-    | ("fn" white+ (ident as name) as s) {
-        line_incs s lexbuf;
+    | "fn" white+ (ident as name) {
+        line_incs lexbuf;
         funnames := (mk_name name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
     | '}' { pop_stack (); rust lexbuf }
     | "impl" white* {
-        line_incs (Lexing.lexeme lexbuf) lexbuf;
+        line_incs lexbuf;
         let end_flag = ref false in
         match Rust_parser.impl_subject1 (rust_lexer end_flag) lexbuf with
         | impl -> push_impl (Some impl); rust lexbuf
@@ -77,7 +66,20 @@ rule rust = parse
             else rust_impl_start lexbuf
     }
     | _ { rust lexbuf }
+    | "//" [^ '\n']* '\n' { new_line lexbuf; rust lexbuf }
+    | "/*" { comment lexbuf }
+    | '\"' { string lexbuf }
     | eof { () }
+
+and comment = parse
+    | [^ '*']* { line_incs lexbuf; comment lexbuf }
+    | "*/" { rust lexbuf }
+    | '*' { comment lexbuf }
+
+and string = parse
+    | [^ '\\' '\"']* { line_incs lexbuf; string lexbuf }
+    | '\\' _ { line_incs lexbuf; string lexbuf }
+    | '"' { rust lexbuf }
 
 and rust_impl_start = parse
     | "{" { rust lexbuf }
@@ -92,7 +94,7 @@ and rust_lexer end_flag = parse
     | "::" { COLONCOLON }
     | "for" { FOR }
     | "{" { end_flag := true; EOF }
-    | white+ { line_incs (Lexing.lexeme lexbuf) lexbuf; rust_lexer end_flag lexbuf }
+    | white+ { line_incs lexbuf; rust_lexer end_flag lexbuf }
 
 
 {

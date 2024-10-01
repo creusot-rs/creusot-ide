@@ -2,18 +2,7 @@
 open Lsp.Types
 open Rust_syntax
 open Rust_parser
-
-(* Function to increase line count in lexbuf *)
-let line_incs s lexbuf =
-(*  Printf.printf "Read: %s\n" s; *)
-  let splits = String.split_on_char '\n' s in
-  let pos = lexbuf.Lexing.lex_curr_p in
-(* Printf.printf "Was in line %d, position %d\n" pos.pos_lnum (pos.pos_cnum - pos.pos_bol); *)
-  lexbuf.Lexing.lex_curr_p <- {
-    pos with
-      Lexing.pos_lnum = pos.Lexing.pos_lnum + (List.length splits - 1);
-      Lexing.pos_bol = if List.length splits > 1 then pos.Lexing.pos_cnum - (String.length (List.hd (List.rev splits))) else pos.Lexing.pos_bol
-  }
+open Util.Lex
 
 type loc_ident = { ident: string; loc: Location.t }
 
@@ -29,9 +18,9 @@ let nonwhite = [^' ' '\t' '\n' '\r']
 let ident = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule coma acc = parse
-    | (white+ as s) { line_incs s lexbuf; coma acc lexbuf }
-    | ("module" white+ (ident as modname) (' '* as spaces) as s) {
-        line_incs s lexbuf;
+    | white+ { line_incs lexbuf; coma acc lexbuf }
+    | "module" white+ (ident as modname) (' '* as spaces) {
+        line_incs lexbuf;
         let end_col = lexbuf.Lexing.lex_curr_p.Lexing.pos_cnum - String.length spaces in
         let begin_col = end_col - String.length modname in
         let modident = {
@@ -48,7 +37,7 @@ rule coma acc = parse
     | eof { List.rev acc }
 
 and coma_module_meta acc modident = parse
-    | "(*" white* {
+    | "(*" ' '* {
         let end_flag = ref false in
         match Rust_parser.impl_subject0 (rust_lexer end_flag) lexbuf with
         | impl ->
@@ -59,6 +48,7 @@ and coma_module_meta acc modident = parse
             if !end_flag then coma acc lexbuf
             else coma_module_meta_end acc lexbuf }
     | '\n' {
+        new_line lexbuf;
         let acc = new_module modident acc in
         coma acc lexbuf }
     | eof {

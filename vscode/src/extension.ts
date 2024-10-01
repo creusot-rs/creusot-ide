@@ -14,8 +14,10 @@ import {
 import { access, existsSync } from "fs";
 import { runInContext } from "vm";
 
-const server : Executable = {
-    command: "/home/sam/rust/cide/server/_build/default/bin/main.exe",
+function getServerExecutable(context) : Executable {
+    return {
+        command: Uri.joinPath(context.extensionUri, "../server/_build/default/bin/main.exe").fsPath,
+    }
 }
 
 const languages = [
@@ -25,7 +27,7 @@ const languages = [
     { scheme: "file", language: "why3proof" },
 ];
 
-function startServer() : LanguageClient {
+function startServer(context) : LanguageClient {
     const outputChannel = vscode.window.createOutputChannel("Creusot IDE");
     const traceOutputChannel = vscode.window.createOutputChannel("Creusot IDE Trace");
     const clientOptions : LanguageClientOptions = {
@@ -34,7 +36,7 @@ function startServer() : LanguageClient {
         documentSelector: languages,
         synchronize: {},
     };
-    const client = new LanguageClient("creusot-ide", "Creusot IDE", server, clientOptions);
+    const client = new LanguageClient("creusot-ide", "Creusot IDE", getServerExecutable(context), clientOptions);
     client.start();
     return client;
 }
@@ -107,5 +109,5 @@ export function activate(context: ExtensionContext) {
     registerCommand(context, "creusot.prove", async () => {
         const exec = await vscode.tasks.executeTask(creusotProve)
     })
-    const client = startServer();
+    const client = startServer(context);
 }

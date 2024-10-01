@@ -92,11 +92,15 @@ let coma_lexbuf lexbuf =
   | exception _ -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname)
 
 let coma_file (path : string) : unit =
-  let h = open_in path in
-  let lexbuf = Lexing.from_channel h in
-  Lexing.set_filename lexbuf path;
-  coma_lexbuf lexbuf;
-  close_in h
+  try
+    let h = open_in path in
+    let lexbuf = Lexing.from_channel h in
+    Lexing.set_filename lexbuf path;
+    coma_lexbuf lexbuf;
+    close_in h
+  with
+  | Sys_error _ -> ()
+  | e -> Debug.debug (Printexc.to_string e)
 
 let coma_file_as_string ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
@@ -174,3 +178,11 @@ let get_rust_diagnostics ~path =
       let+ loc_ident = lookup_def_path (Other doc.package :: Other doc.module_ :: def_path) in
       let+ thy = Why3session.get_theory loc_ident.Hacky_coma_parser.ident in
       Some RustDiagnostic.{ range; status = status_of_thy thy }
+
+let proof_json path =
+  try
+    Why3find.read_proof_json ~fname:path
+      |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
+  with
+  | Sys_error _ -> ()
+  | e -> Debug.debug (Printexc.to_string e)

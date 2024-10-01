@@ -31,3 +31,5 @@ module RustDiagnostic : sig
 end
 
 val get_rust_diagnostics : path:string -> RustDiagnostic.t list
+
+val proof_json : string -> unit
