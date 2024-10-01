@@ -78,9 +78,7 @@ let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident opti
 let m = Mutex.create ()
 
 let insert_def_path d =
-  Mutex.protect m (fun () ->
-  Debug.debug (Printf.sprintf "insert_def_path: %s" (Rust_syntax.string_of_def_path d));
-   insert_trie global_trie d)
+  Mutex.protect m (fun () -> insert_trie global_trie d)
 let lookup_def_path d =
   Mutex.protect m (fun () -> lookup_trie global_trie d)
 
@@ -205,7 +203,7 @@ let get_rust_lenses uri =
             `String "gotoAndPeek"]]
     in
     let coma_lens = create_lens
-        ~title:"Inspect .coma"
+        ~title:"Inspect output Coma"
         ~command:"creusot.peekLocations"
         ~arguments:[
           DocumentUri.yojson_of_t uri;

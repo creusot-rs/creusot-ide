@@ -19,17 +19,17 @@ let ident = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule coma acc = parse
     | white+ { line_incs lexbuf; coma acc lexbuf }
-    | "module" ' '+ (ident as modname) ((' '* '[' [^ '\n' ']']* ']')* as etc) {
-        (* Offset from the current position to the position of modname *)
-        let end_col = lexbuf.Lexing.lex_curr_p.Lexing.pos_cnum - String.length etc in
+    | "module" ' '+ (ident as modname) {
+        let open Lexing in
+        let end_col = lexbuf.lex_curr_p.pos_cnum - lexbuf.lex_curr_p.pos_bol in
         let begin_col = end_col - String.length modname in
         let modident = {
             ident = modname;
             loc = Location.create
                 ~range:(Range.create
-                    ~start:(Position.create ~line:lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum ~character:begin_col)
-                     ~end_:(Position.create ~line:lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum ~character:end_col))
-                ~uri:(DocumentUri.of_path lexbuf.Lexing.lex_curr_p.Lexing.pos_fname)
+                    ~start:(Position.create ~line:lexbuf.lex_curr_p.pos_lnum ~character:begin_col)
+                     ~end_:(Position.create ~line:lexbuf.lex_curr_p.pos_lnum ~character:end_col))
+                ~uri:(DocumentUri.of_path lexbuf.lex_curr_p.pos_fname)
         } in
         coma_module_meta acc modident lexbuf
     }
@@ -37,6 +37,8 @@ rule coma acc = parse
     | eof { List.rev acc }
 
 and coma_module_meta acc modident = parse
+    | ' '* { coma_module_meta acc modident lexbuf }
+    | '[' [^ '\n' ']']* ']' { coma_module_meta acc modident lexbuf } (* skip attributes *)
     | "(*" ' '* {
         let end_flag = ref false in
         match Rust_parser.impl_subject0 (rust_lexer end_flag) lexbuf with
@@ -48,6 +50,7 @@ and coma_module_meta acc modident = parse
             if !end_flag then coma acc lexbuf
             else coma_module_meta_end acc lexbuf }
     | '\n' {
+        (* Nothing right after the module name, go back to main loop *)
         new_line lexbuf;
         let acc = new_module modident acc in
         coma acc lexbuf }

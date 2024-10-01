@@ -13,7 +13,7 @@ module Lex = struct
     let splits = String.split_on_char '\n' (Lexing.lexeme lexbuf) in
     let n_lines = List.length splits - 1 in
     let len_last_line = String.length (List.hd (List.rev splits)) in
-    if n_lines > 0 then () else
+    if n_lines > 0 then
         let pos = lexbuf.Lexing.lex_curr_p in
         lexbuf.Lexing.lex_curr_p <- {
             pos with
