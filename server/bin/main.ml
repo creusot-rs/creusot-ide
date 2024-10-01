@@ -108,9 +108,8 @@ class lsp_server =
           if base = "why3session.xml" then
             Creusot_lsp.Why3session.process_why3session_path path
           else if base = "proof.json" then
-            Creusot_lsp.Why3find.read_proof_json ~fname:path |> List.iter (fun (name, thy) ->
-              Creusot_lsp.Why3session.add_thy name thy)
-            else if Filename.check_suffix base ".coma" then
+            Creusot_manager.proof_json path
+          else if Filename.check_suffix base ".coma" then
               Creusot_manager.coma_file path;
           self#refresh_all ~notify_back
       | _ -> Lwt.return ()
@@ -148,12 +147,14 @@ class lsp_server =
         | Some _ -> false
         | None -> Filename.check_suffix path ".rs"
       in
-      if rusty then Creusot_manager.rust_file_as_string ~package ~path content
+      if rusty then (
+        Hashtbl.add files_with_diags uri ();
+        Creusot_manager.rust_file_as_string ~package ~path content
+      )
 
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
-      Hashtbl.add files_with_diags d.uri ();
       self#_on_doc ~notify_back ~languageId:d.languageId d.uri content
 
     (* Similarly, we also override the [on_notify_doc_did_change] method that will be called
