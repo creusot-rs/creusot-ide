@@ -226,7 +226,7 @@ let get_rust_diagnostics uri =
   let to_lsp_diagnostics d =
     let open RustInfo in
     let range = d.range in
-    let source = "creusot" in
+    let source = "Creusot" in
     let create_diagnostic message severity relatedInformation =
       Diagnostic.create ~range ~source ~message ~severity ~relatedInformation () in
     match d.status with
