@@ -1,5 +1,7 @@
 open Lsp.Types
 
+val lookup_demangle : string -> Rust_syntax.def_path option
+
 val coma_file : string -> unit
 
 val coma_file_as_string : path:string -> string -> unit
@@ -22,14 +24,20 @@ val read_cargo : root:string -> unit
 
 val get_package_name : unit -> string
 
-module RustDiagnostic : sig
-    type status = Qed | ToProve of (string * Location.t) array
+module RustInfo : sig
+    type status =
+        | Unknown
+        | Qed
+        | ToProve of (string * Location.t) array
     type t = {
         range: Range.t;
+        to_coma: Location.t;
         status: status;
     }
 end
 
-val get_rust_diagnostics : path:string -> RustDiagnostic.t list
+val get_rust_info : path:string -> RustInfo.t list
+val get_rust_lenses : DocumentUri.t -> CodeLens.t list
+val get_rust_diagnostics : DocumentUri.t -> Diagnostic.t list
 
 val proof_json : string -> unit

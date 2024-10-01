@@ -125,25 +125,8 @@ class lsp_server =
           self#update_diagnostics ~notify_back uri)
 
     method private update_diagnostics ~notify_back uri =
-      let to_related_information (goal_name, location) =
-        DiagnosticRelatedInformation.create ~location ~message:goal_name
-      in
-      let to_lsp_diagnostics d =
-        let open Creusot_manager.RustDiagnostic in
-        let range = d.range in
-        let source = "creusot" in
-        let message, severity, relatedInformation = match d.status with
-          | Qed -> "QED", DiagnosticSeverity.Information, []
-          | ToProve goals ->
-              Printf.sprintf "%d unproved goals" (Array.length goals),
-              DiagnosticSeverity.Warning,
-              Array.(to_list (map to_related_information goals))
-        in
-        Lsp.Types.Diagnostic.create ~message ~range ~severity ~source ~relatedInformation ()
-      in
       let* diags = Debug.debug_handler (log_info notify_back) (fun () ->
-        Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
-          |> List.map to_lsp_diagnostics) in
+        Creusot_manager.get_rust_diagnostics uri) in
       notify_back#send_diagnostic diags
 
     (* We define here a helper method that will:
@@ -191,27 +174,8 @@ class lsp_server =
       }
 
     method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
-      let to_lsp_lenses d =
-        let open Creusot_manager.RustDiagnostic in
-        let range = d.range in
-        let command = match d.status with
-          | Qed -> Command.create ~title:"QED" ~command:"" ()
-          | ToProve goals -> Command.create
-              ~title:(Printf.sprintf "%d unproved goals" (Array.length goals))
-              ~command:"creusot.peekLocations"
-              ~arguments:[
-                DocumentUri.yojson_of_t uri;
-                Position.(yojson_of_t range.Range.start);
-                `List (Array.(to_list (map (fun (_name, location) -> Location.yojson_of_t location) goals)));
-                `String "gotoAndPeek"]
-                ()
-        in
-        CodeLens.create ~command ~range ()
-      in
-      let* lenses = Debug.debug_handler (log_info notify_back) (fun () ->
-        Creusot_manager.get_rust_diagnostics ~path:(DocumentUri.to_path uri)
-          |> List.map to_lsp_lenses) in
-      Lwt.return lenses
+      Debug.debug_handler (log_info notify_back) @@ fun () ->
+        Creusot_manager.get_rust_lenses uri
   end
 
 let run () =

@@ -150,17 +150,21 @@ let read_cargo ~root =
 
 let get_package_name () = !package_name
 
-module RustDiagnostic = struct
-  type status = Qed | ToProve of (string * Location.t) array
+module RustInfo = struct
+  type status =
+    | Unknown
+    | Qed
+    | ToProve of (string * Location.t) array
   type t = {
       range: Range.t;
+      to_coma: Location.t;
       status: status;
   }
 end
 
 let status_of_thy thy =
   let open Types in
-  let open RustDiagnostic in
+  let open RustInfo in
   if Array.length thy.unproved_goals = 0 then
     Qed
   else
@@ -169,15 +173,71 @@ let status_of_thy thy =
     let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
     ToProve (Array.map from_goal thy.unproved_goals)
 
-let get_rust_diagnostics ~path =
+let get_rust_info ~path =
   match Hashtbl.find_opt rust_files path with
   | None -> []
   | Some doc ->
     doc.defns |> List.filter_map @@ fun (def_path, range) ->
       let (let+) = Option.bind in
       let+ loc_ident = lookup_def_path (Other doc.package :: Other doc.module_ :: def_path) in
-      let+ thy = Why3session.get_theory loc_ident.Hacky_coma_parser.ident in
-      Some RustDiagnostic.{ range; status = status_of_thy thy }
+      let status = match Why3session.get_theory loc_ident.Hacky_coma_parser.ident with
+        | None -> RustInfo.Unknown
+        | Some thy -> status_of_thy thy
+      in
+      let to_coma = loc_ident.loc in
+      Some RustInfo.{ range; to_coma; status }
+
+let get_rust_lenses uri =
+  let to_lsp_lenses d =
+    let open RustInfo in
+    let create_lens ~title ~command ~arguments = CodeLens.create ~range:d.range ~command:(Command.create ~title ~command ~arguments ()) () in
+    let proof_lens =
+      match d.status with
+      | Unknown -> []
+      | Qed -> [create_lens ~title:"QED" ~command:"" ~arguments:[]]
+      | ToProve goals -> [create_lens
+          ~title:(Printf.sprintf "%d unproved goals" (Array.length goals))
+          ~command:"creusot.peekLocations"
+          ~arguments:[
+            DocumentUri.yojson_of_t uri;
+            Position.(yojson_of_t d.range.Range.start);
+            `List (Array.(to_list (map (fun (_name, location) -> Location.yojson_of_t location) goals)));
+            `String "gotoAndPeek"]]
+    in
+    let coma_lens = create_lens
+        ~title:"Inspect .coma"
+        ~command:"creusot.peekLocations"
+        ~arguments:[
+          DocumentUri.yojson_of_t uri;
+          Position.(yojson_of_t d.range.Range.start);
+          `List [Location.yojson_of_t d.to_coma];
+          `String "gotoAndPeek"]
+    in
+    proof_lens @ [coma_lens]
+  in
+  get_rust_info ~path:(DocumentUri.to_path uri)
+    |> List.concat_map to_lsp_lenses
+
+let get_rust_diagnostics uri =
+  let to_related_information (goal_name, location) =
+    DiagnosticRelatedInformation.create ~location ~message:goal_name
+  in
+  let to_lsp_diagnostics d =
+    let open RustInfo in
+    let range = d.range in
+    let source = "creusot" in
+    let create_diagnostic message severity relatedInformation =
+      Diagnostic.create ~range ~source ~message ~severity ~relatedInformation () in
+    match d.status with
+    | Unknown -> []
+    | Qed -> [create_diagnostic "QED" DiagnosticSeverity.Information []]
+    | ToProve goals -> [create_diagnostic
+          (Printf.sprintf "%d unproved goals" (Array.length goals))
+          DiagnosticSeverity.Warning
+          Array.(to_list (map to_related_information goals))]
+  in
+  get_rust_info ~path:(DocumentUri.to_path uri)
+      |> List.concat_map to_lsp_diagnostics
 
 let proof_json path =
   try
