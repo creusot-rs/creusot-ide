@@ -29,7 +29,7 @@ let from_proof_json (fpath: string) json =
   member "proofs" json
     |> to_assoc
     |> List.map @@ fun (name, thjson) ->
-      let unproved_goals = Array.of_list (find_unproved_goals thjson) in
+      let unproved_goals = Unproved (Array.of_list (find_unproved_goals thjson)) in
       (name, { path = fpath; name; unproved_goals })
 
 let parse_proof_json ~fname contents =

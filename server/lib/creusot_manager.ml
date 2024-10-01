@@ -163,13 +163,14 @@ end
 let status_of_thy thy =
   let open Types in
   let open RustInfo in
-  if Array.length thy.unproved_goals = 0 then
-    Qed
-  else
+  match thy.unproved_goals with
+  | Types.Unknown -> Unknown
+  | Types.Unproved goals when Array.length goals = 0 -> Qed
+  | Types.Unproved goals ->
     let dummy_position = Position.create ~line:0 ~character:0 in
     let dummy_range = Range.create ~start:dummy_position ~end_:dummy_position in
     let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
-    ToProve (Array.map from_goal thy.unproved_goals)
+    ToProve (Array.map from_goal goals)
 
 let get_rust_info ~path =
   match Hashtbl.find_opt rust_files path with

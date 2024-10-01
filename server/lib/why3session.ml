@@ -24,7 +24,7 @@ let rec process_goal : tree -> goal list = function
 
 let process_theory path : tree -> unit = function
   | `Theory (name, children) ->
-    let unproved_goals = Array.of_list @@ List.concat_map process_goal children in
+    let unproved_goals = Unproved (Array.of_list @@ List.concat_map process_goal children) in
     Hashtbl.add theories name { path; name; unproved_goals }
   | _ -> ()
 
@@ -73,7 +73,10 @@ let collect_sessions ~root =
 let debug_theories () =
   let r = ref [] in
   Hashtbl.iter (fun name info ->
-    let msg = Printf.sprintf "Theory %s (%s) has %d unproved goals\n" name info.path (Array.length info.unproved_goals) in
+    let msg =
+      match info.unproved_goals with
+      | Unknown -> Printf.sprintf "Theory %s, status unknown" name
+      | Unproved unproved_goals -> Printf.sprintf "Theory %s (%s) has %d unproved goals\n" name info.path (Array.length unproved_goals) in
     r := msg :: !r) theories;
   String.concat "" !r
 
