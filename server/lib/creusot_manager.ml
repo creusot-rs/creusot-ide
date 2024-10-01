@@ -83,7 +83,9 @@ let lookup_def_path d =
   Mutex.protect m (fun () -> lookup_trie global_trie d)
 
 let coma_lexbuf lexbuf =
+  let open Lexing in
   let open Hacky_coma_parser in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_lnum = 0 };
   match coma [] lexbuf with
   | acc ->
     List.iter (fun (name, path) -> insert_demangle name.ident path; insert_def_path path name) acc
