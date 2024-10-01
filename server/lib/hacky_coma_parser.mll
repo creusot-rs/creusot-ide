@@ -19,9 +19,9 @@ let ident = ['a'-'z' 'A'-'Z' '_'] ['a'-'z' 'A'-'Z' '0'-'9' '_']*
 
 rule coma acc = parse
     | white+ { line_incs lexbuf; coma acc lexbuf }
-    | "module" white+ (ident as modname) (' '* as spaces) {
-        line_incs lexbuf;
-        let end_col = lexbuf.Lexing.lex_curr_p.Lexing.pos_cnum - String.length spaces in
+    | "module" ' '+ (ident as modname) ((' '* '[' [^ '\n' ']']* ']')* as etc) {
+        (* Offset from the current position to the position of modname *)
+        let end_col = lexbuf.Lexing.lex_curr_p.Lexing.pos_cnum - String.length etc in
         let begin_col = end_col - String.length modname in
         let modident = {
             ident = modname;
