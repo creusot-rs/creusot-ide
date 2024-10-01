@@ -21,3 +21,20 @@ module Lex = struct
             Lexing.pos_bol = pos.Lexing.pos_cnum - len_last_line
         }
 end
+
+module Async = struct
+  type _ Effect.t += Async : 'a Lwt.t -> 'a Effect.t
+
+  let async (t : 'a Lwt.t) : 'a = Effect.perform (Async t)
+
+  let async_handler (type a) (f : unit -> a) : a Lwt.t =
+    let open Effect.Deep in
+    match_with f () {
+      retc = (fun x -> Lwt.return x);
+      exnc = raise;
+      effc = (fun (type a) (eff : a Effect.t) ->
+        match eff with
+        | Async t -> Some (fun (k : (a, _) continuation) -> Lwt.bind t (continue k))
+        | _ -> None)
+    }
+end

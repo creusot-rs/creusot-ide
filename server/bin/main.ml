@@ -1,6 +1,5 @@
 open Linol_lwt
 open Creusot_lsp
-open Rust_syntax
 
 module Log = (val Logs.src_log Logs.Src.(create "creusotlsp"))
 
@@ -27,11 +26,25 @@ let diagnostics (_state : state_after_processing) : Lsp.Types.Diagnostic.t list
     =
   []
 
-type doc = {
-    package: string;
-    module_: string;
-    defns: (def_path * Lsp.Types.Range.t) list;
-  }
+type revdeps =
+  | AllRsFiles  (* The coma and proofs in target/ touch every rs file *)
+  | OneFile of DocumentUri.t
+
+let revdeps : (DocumentUri.t, revdeps) Hashtbl.t = Hashtbl.create 16
+let rs_files : (DocumentUri.t, unit) Hashtbl.t = Hashtbl.create 16
+
+(* Given a .coma or proof.json, what .rs files have diagnostics that depend on it *)
+let add_revdeps uri d = Hashtbl.replace revdeps uri d
+let add_rs_file uri = Hashtbl.replace rs_files uri ()
+
+let is_rs path = Filename.check_suffix path ".rs"
+
+let iter_revdeps uri process =
+  match Hashtbl.find_opt revdeps uri with
+  | Some AllRsFiles ->
+    Hashtbl.iter (fun name () -> if is_rs (DocumentUri.to_path name) then process name) rs_files
+  | Some (OneFile f) -> process f
+  | None -> ()
 
 (* Lsp server class
 
@@ -67,15 +80,17 @@ class lsp_server =
         | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
           let root = DocumentUri.to_path folder.WorkspaceFolder.uri in
           let open Creusot_lsp in
-          let* () = Debug.debug_handler (log_info notify_back) @@ fun () ->
+          Debug.debug_handler (log_info notify_back) @@ fun () ->
             Creusot_manager.read_cargo ~root;
             let crate = Creusot_manager.get_package_name () in
             (* Why3session.collect_sessions_for ~root ~crate; *)
             let (/) = Filename.concat in
-            Creusot_manager.coma_file (root / "target" / (crate ^ "-lib.coma"));
-            Creusot_manager.proof_json (root / "target" / (crate ^ "-lib") / "proof.json")
-          in
-          log_info notify_back @@ Creusot_lsp.Why3session.debug_theories ()
+            let global_coma = root / "target" / (crate ^ "-lib.coma") in
+            let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
+            Creusot_manager.coma_file global_coma;
+            Creusot_manager.proof_json global_proof;
+            add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
+            add_revdeps (DocumentUri.of_path global_proof) AllRsFiles
         | _ -> Lwt.return ()
       in
       super#on_req_initialize ~notify_back params
@@ -97,10 +112,10 @@ class lsp_server =
         let reg_params = RegistrationParams.create ~registrations:[file_watcher_registration] in
         let* _req_id = notify_back#send_request (ClientRegisterCapability reg_params) (fun _result -> Lwt.return ()) in
         Lwt.return ()
-      | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s (self#refresh_proof ~notify_back) changes
+      | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s (self#changed_watched_file ~notify_back) changes
       | notif -> super#on_notification_unhandled ~notify_back notif
 
-    method private refresh_proof ~notify_back change =
+    method private changed_watched_file ~notify_back change =
       match change.type_ with
       | Created | Changed ->
           let path = DocumentUri.to_path change.uri in
@@ -110,29 +125,25 @@ class lsp_server =
           else if base = "proof.json" then
             Creusot_manager.proof_json path
           else if Filename.check_suffix base ".coma" then
-              Creusot_manager.coma_file path;
-          self#refresh_all ~notify_back
+            Creusot_manager.coma_file path;
+          self#refresh_all ~notify_back change.uri
       | _ -> Lwt.return ()
 
     val files_with_diags : (DocumentUri.t, unit) Hashtbl.t = Hashtbl.create 32
 
-    method private refresh_all ~notify_back : _ t =
+    method private refresh_all ~notify_back uri : _ t =
       let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _result -> Lwt.return ()) in
-      Hashtbl.to_seq files_with_diags |> List.of_seq |>
-        Lwt_list.iter_s (fun (uri, _) ->
+      let open Util.Async in
+      async_handler @@ fun () ->
+        iter_revdeps uri @@ fun uri ->
           notify_back#set_uri uri; (* This is disgusting *)
-          self#update_diagnostics ~notify_back uri)
+          async (self#update_diagnostics ~notify_back uri)
 
     method private update_diagnostics ~notify_back uri =
       let* diags = Debug.debug_handler (log_info notify_back) (fun () ->
         Creusot_manager.get_rust_diagnostics uri) in
       notify_back#send_diagnostic diags
 
-    (* We define here a helper method that will:
-       - process a document
-       - store the state resulting from the processing
-       - return the diagnostics from the new state
-    *)
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
         ?languageId
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
@@ -149,6 +160,14 @@ class lsp_server =
       in
       if rusty then (
         Hashtbl.add files_with_diags uri ();
+        let base = Filename.chop_suffix path ".rs" in
+        let coma = base ^ ".coma" in
+        let why3session = Filename.concat base "why3session.xml" in
+        (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
+        Creusot_manager.coma_file coma;
+        Creusot_lsp.Why3session.process_why3session_path why3session;
+        add_revdeps (DocumentUri.of_path coma) (OneFile uri);
+        add_revdeps (DocumentUri.of_path why3session) (OneFile uri);
         Creusot_manager.rust_file_as_string ~package ~path content
       )
 
