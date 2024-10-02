@@ -84,7 +84,9 @@ let m = Mutex.create ()
 let insert_def_path d =
   Mutex.protect m (fun () -> insert_trie global_trie d)
 let lookup_def_path d =
-  Mutex.protect m (fun () -> lookup_trie global_trie d)
+  let r = Mutex.protect m (fun () -> lookup_trie global_trie d) in
+  if Option.is_none r then Debug.debug ("No coma module found for " ^ Rust_syntax.string_of_def_path d);
+  r
 
 let subtrie =
   let rec subtrie_ t = function
