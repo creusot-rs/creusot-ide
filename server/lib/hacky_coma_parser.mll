@@ -37,7 +37,7 @@ rule coma acc = parse
     | eof { List.rev acc }
 
 and coma_module_meta acc modident = parse
-    | ' '* { coma_module_meta acc modident lexbuf }
+    | ' '+ { coma_module_meta acc modident lexbuf }
     | '[' [^ '\n' ']']* ']' { coma_module_meta acc modident lexbuf } (* skip attributes *)
     | "(*" ' '* {
         let end_flag = ref false in
@@ -62,13 +62,13 @@ and coma_module_meta_end acc = parse
     | "*)" { coma acc lexbuf }
 
 and rust_lexer end_flag = parse
+    | "as" { AS } (* reminder: overlaps with ident! *)
     | ident { IDENT (Lexing.lexeme lexbuf) } 
     | '<' { LANGLE }
     | '>' { RANGLE }
     | ',' { COMMA }
     | "()" { UNIT }
     | "::" { COLONCOLON }
-    | "as" { AS }
     | "*)" { end_flag := true; EOF }
     | ' '+ { rust_lexer end_flag lexbuf }
 

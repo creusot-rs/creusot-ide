@@ -111,7 +111,7 @@ let coma_lexbuf lexbuf =
   match coma [] lexbuf with
   | acc ->
     List.iter (fun (name, path) -> insert_demangle name.ident path; insert_def_path path name) acc
-  | exception _ -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname)
+  | exception e -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname ^ ": " ^ Printexc.to_string e)
 
 let coma_file (path : string) : bool =
   try
