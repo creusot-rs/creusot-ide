@@ -86,6 +86,24 @@ let insert_def_path d =
 let lookup_def_path d =
   Mutex.protect m (fun () -> lookup_trie global_trie d)
 
+let subtrie =
+  let rec subtrie_ t = function
+    | [] -> Some t
+    | ident :: idents ->
+      match Hashtbl.find_opt t.ident_map ident with
+      | None -> None
+      | Some t -> subtrie_ t idents
+  in
+  subtrie_ global_trie
+
+let walk_trie t f =
+  let rec walk_ t =
+    Option.iter (fun i -> f i) t.coma_loc_ident;
+    Hashtbl.iter (fun _ t -> walk_ t) t.ident_map;
+    List.iter (fun (_, t) -> walk_ t) t.impl_map
+  in
+  walk_ t
+
 let coma_lexbuf lexbuf =
   let open Lexing in
   let open Hacky_coma_parser in
@@ -161,11 +179,21 @@ module RustInfo = struct
     | Unknown
     | Qed
     | ToProve of (string * Location.t) array
-  type t = {
+  type item = {
       range: Range.t;
       to_coma: Location.t;
       status: status;
   }
+  type orphan_item = {
+    orphan_name: string;
+    orphan_coma_loc: Location.t;
+    orphan_status: status;
+  }
+  type t = {
+    inline_items: item list;
+    orphans: orphan_item list;
+  }
+  let empty = { inline_items = []; orphans = [] }
 end
 
 let status_of_thy thy =
@@ -180,24 +208,49 @@ let status_of_thy thy =
     let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
     ToProve (Array.map from_goal goals)
 
-let get_rust_info ~package ~path =
+let get_status ident = match Why3session.get_theory ident with
+  | None -> RustInfo.Unknown
+  | Some thy -> status_of_thy thy
+
+let find_orphan_goals ~package modname visited =
+  match subtrie (match package with None -> [modname] | Some package -> [package; modname]) with
+  | None -> []
+  | Some t ->
+    let r = ref [] in
+    let _ = walk_trie t @@ fun i -> if not (visited i.ident) then (
+      let item = RustInfo.{
+        orphan_name = i.ident;
+        orphan_coma_loc = i.loc;
+        orphan_status = get_status i.ident;
+      } in
+      r := item :: !r
+    ) in
+    !r
+
+let get_rust_info ~package ~path : RustInfo.t =
   let open Rust_syntax in
   match Hashtbl.find_opt rust_files path with
-  | None -> []
+  | None -> RustInfo.empty
   | Some doc ->
-    doc.defns |> List.filter_map @@ fun (def_path, range) ->
-      let (let+) = Option.bind in
-      let dpath = match package with
-        | None -> Other doc.module_ :: def_path
-        | Some package -> Other package :: Other doc.module_ :: def_path
-      in
-      let+ loc_ident = lookup_def_path dpath in
-      let status = match Why3session.get_theory loc_ident.Hacky_coma_parser.ident with
-        | None -> RustInfo.Unknown
-        | Some thy -> status_of_thy thy
-      in
-      let to_coma = loc_ident.loc in
-      Some RustInfo.{ range; to_coma; status }
+    let visited = Hashtbl.create 16 in
+    let inline_items =
+      doc.defns |> List.filter_map @@ fun (def_path, range) ->
+        let (let+) = Option.bind in
+        let dpath = match package with
+          | None -> Other doc.module_ :: def_path
+          | Some package -> Other package :: Other doc.module_ :: def_path
+        in
+        let+ loc_ident = lookup_def_path dpath in
+        let status = get_status loc_ident.ident in
+        let to_coma = loc_ident.loc in
+        Hashtbl.replace visited loc_ident.ident ();
+        Some RustInfo.{ range; to_coma; status }
+    in
+    let orphans = find_orphan_goals ~package doc.module_ (Hashtbl.mem visited) in
+    RustInfo.{
+      inline_items;
+      orphans;
+    }
 
 let get_rust_lenses uri =
   let to_lsp_lenses d =
@@ -228,8 +281,34 @@ let get_rust_lenses uri =
     proof_lens @ [coma_lens]
   in
   let path = DocumentUri.to_path uri in
-  get_rust_info ~package:(crate_of path) ~path
-    |> List.concat_map to_lsp_lenses
+  let info = get_rust_info ~package:(crate_of path) ~path in
+  let inline_items = info.inline_items |> List.concat_map to_lsp_lenses in
+  let orphan_lens_opt =
+    match info.orphans with
+    | [] -> []
+    | _ :: _ ->
+      let open RustInfo in
+      let zero = Position.create ~line:0 ~character:0 in
+      let range = Range.create ~start:zero ~end_:zero in
+      let n_orphan_unproved = List.fold_left (fun acc orphan -> acc + match orphan.orphan_status with
+        | Unknown -> 0
+        | Qed -> 0
+        | ToProve goals -> Array.length goals) 0 info.orphans in
+      let title_end = if n_orphan_unproved = 0 then "" else " with %d unproved goals" in
+      let title = Printf.sprintf "%d orphan theories%s" (List.length info.orphans) title_end in
+      let orphans_locs = info.orphans |> List.map @@ fun orphan ->
+        Location.(yojson_of_t orphan.orphan_coma_loc) in
+      let command = Command.create
+        ~title
+        ~command:"creusot.peekLocations"
+        ~arguments: [
+          DocumentUri.yojson_of_t uri;
+          Position.(yojson_of_t zero);
+          `List orphans_locs
+        ] () in
+      [CodeLens.create ~range ~command ()]
+  in
+  orphan_lens_opt @ inline_items
 
 let get_rust_diagnostics uri =
   let to_related_information (goal_name, location) =
@@ -250,8 +329,8 @@ let get_rust_diagnostics uri =
           Array.(to_list (map to_related_information goals))]
   in
   let path = DocumentUri.to_path uri in
-  get_rust_info ~package:(crate_of path) ~path
-      |> List.concat_map to_lsp_diagnostics
+  let info = get_rust_info ~package:(crate_of path) ~path in
+  info.inline_items |> List.concat_map to_lsp_diagnostics
 
 let proof_json path =
   try

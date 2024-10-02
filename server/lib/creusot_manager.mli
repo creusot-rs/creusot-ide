@@ -29,14 +29,23 @@ module RustInfo : sig
         | Unknown
         | Qed
         | ToProve of (string * Location.t) array
-    type t = {
+    type item = {
         range: Range.t;
         to_coma: Location.t;
         status: status;
     }
+    type orphan_item = {
+        orphan_name: string;
+        orphan_coma_loc: Location.t;
+        orphan_status: status;
+    }
+    type t = {
+        inline_items: item list;
+        orphans: orphan_item list;
+    }
 end
 
-val get_rust_info : package:string option -> path:string -> RustInfo.t list
+val get_rust_info : package:string option -> path:string -> RustInfo.t
 val get_rust_lenses : DocumentUri.t -> CodeLens.t list
 val get_rust_diagnostics : DocumentUri.t -> Diagnostic.t list
 
