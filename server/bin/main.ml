@@ -82,15 +82,19 @@ class lsp_server =
           let open Creusot_lsp in
           Debug.debug_handler (log_info notify_back) @@ fun () ->
             Creusot_manager.read_cargo ~root;
-            let crate = Creusot_manager.get_package_name () in
-            (* Why3session.collect_sessions_for ~root ~crate; *)
-            let (/) = Filename.concat in
-            let global_coma = root / "target" / (crate ^ "-lib.coma") in
-            let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
-            Creusot_manager.coma_file global_coma;
-            Creusot_manager.proof_json global_proof;
-            add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
-            add_revdeps (DocumentUri.of_path global_proof) AllRsFiles
+            (match Creusot_manager.get_package_name () with
+            | None -> ()
+            | Some crate ->
+              (* Why3session.collect_sessions_for ~root ~crate; *)
+              let (/) = Filename.concat in
+              let global_coma = root / "target" / (crate ^ "-lib.coma") in
+              let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
+              if Creusot_manager.coma_file global_coma then (
+                Creusot_manager.proof_json global_proof;
+                add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
+                add_revdeps (DocumentUri.of_path global_proof) AllRsFiles
+              );
+            )
         | _ -> Lwt.return ()
       in
       super#on_req_initialize ~notify_back params
@@ -125,7 +129,7 @@ class lsp_server =
           else if base = "proof.json" then
             Creusot_manager.proof_json path
           else if Filename.check_suffix base ".coma" then
-            Creusot_manager.coma_file path;
+            ignore (Creusot_manager.coma_file path);
           self#refresh_all ~notify_back change.uri
       | _ -> Lwt.return ()
 
@@ -151,7 +155,6 @@ class lsp_server =
         self#update_diagnostics ~notify_back uri
 
     method private refresh_file ?languageId (uri : DocumentUri.t) ~content =
-      let package = Creusot_manager.get_package_name () in
       let path = DocumentUri.to_path uri in
       let rusty = match languageId with
         | Some (Some "rust") -> true
@@ -164,11 +167,13 @@ class lsp_server =
         let coma = base ^ ".coma" in
         let why3session = Filename.concat base "why3session.xml" in
         (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
-        Creusot_manager.coma_file coma;
-        Creusot_lsp.Why3session.process_why3session_path why3session;
-        add_revdeps (DocumentUri.of_path coma) (OneFile uri);
-        add_revdeps (DocumentUri.of_path why3session) (OneFile uri);
-        Creusot_manager.rust_file_as_string ~package ~path content
+        if Creusot_manager.coma_file coma then (
+          Creusot_manager.declare_orphan path;
+          Creusot_lsp.Why3session.process_why3session_path why3session;
+          add_revdeps (DocumentUri.of_path coma) (OneFile uri);
+          add_revdeps (DocumentUri.of_path why3session) (OneFile uri);
+        );
+        Creusot_manager.rust_file_as_string ~path content
       )
 
     (* We now override the [on_notify_doc_did_open] method that will be called

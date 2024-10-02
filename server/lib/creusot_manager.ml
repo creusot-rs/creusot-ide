@@ -1,6 +1,10 @@
 open Lsp.Types
 open Hacky_coma_parser
 
+let orphans : (string, unit) Hashtbl.t = Hashtbl.create 32
+let declare_orphan path = Hashtbl.replace orphans path ()
+let is_orphan path = Hashtbl.mem orphans path
+
 type trie =
   { ident_map: (string, trie) Hashtbl.t;
     mutable coma_loc_ident: loc_ident option; (* Location in the coma file *)
@@ -91,16 +95,17 @@ let coma_lexbuf lexbuf =
     List.iter (fun (name, path) -> insert_demangle name.ident path; insert_def_path path name) acc
   | exception _ -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname)
 
-let coma_file (path : string) : unit =
+let coma_file (path : string) : bool =
   try
     let h = open_in path in
     let lexbuf = Lexing.from_channel h in
     Lexing.set_filename lexbuf path;
     coma_lexbuf lexbuf;
-    close_in h
+    close_in h;
+    true
   with
-  | Sys_error _ -> ()
-  | e -> Debug.debug (Printexc.to_string e)
+  | Sys_error _ -> false
+  | e -> Debug.debug ("Unexpected exception: " ^ Printexc.to_string e); false
 
 let coma_file_as_string ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
@@ -108,7 +113,6 @@ let coma_file_as_string ~path (s : string) : unit =
   coma_lexbuf lexbuf
 
 type rust_doc = {
-  package: string;
   module_: string;
   defns: (Rust_syntax.def_path * Lsp.Types.Range.t) list;
 }
@@ -120,26 +124,26 @@ let span_to_range (start, stop) =
     ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
     ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol))
 
-let rust_lexbuf ~package ~path lexbuf =
+let rust_lexbuf ~path lexbuf =
   let open Hacky_rs_parser in
   match list_names lexbuf with
   | names ->
     let module_ = path |> Filename.basename |> Filename.remove_extension in
     let defns = names |> List.map (fun (def_path, span) -> (def_path, span_to_range span)) in
-    Hashtbl.add rust_files path { package; module_; defns }
+    Hashtbl.add rust_files path { module_; defns }
   | exception _ -> ()
 
-let rust_file ~package (path : string) : unit =
+let rust_file (path : string) : unit =
   let h = open_in path in
   let lexbuf = Lexing.from_channel h in
   Lexing.set_filename lexbuf path;
-  rust_lexbuf ~package ~path lexbuf;
+  rust_lexbuf ~path lexbuf;
   close_in h
 
-let rust_file_as_string ~package ~path (s : string) : unit =
+let rust_file_as_string ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
   Lexing.set_filename lexbuf path;
-  rust_lexbuf ~package ~path lexbuf
+  rust_lexbuf ~path lexbuf
 
 let package_name = ref ""
 
@@ -148,7 +152,9 @@ let read_cargo ~root =
   | None -> ()
   | Some crate -> package_name := crate
 
-let get_package_name () = !package_name
+let get_package_name () = Some !package_name
+let crate_of path =
+  if is_orphan path then None else get_package_name ()
 
 module RustInfo = struct
   type status =
@@ -174,13 +180,18 @@ let status_of_thy thy =
     let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
     ToProve (Array.map from_goal goals)
 
-let get_rust_info ~path =
+let get_rust_info ~package ~path =
+  let open Rust_syntax in
   match Hashtbl.find_opt rust_files path with
   | None -> []
   | Some doc ->
     doc.defns |> List.filter_map @@ fun (def_path, range) ->
       let (let+) = Option.bind in
-      let+ loc_ident = lookup_def_path (Other doc.package :: Other doc.module_ :: def_path) in
+      let dpath = match package with
+        | None -> Other doc.module_ :: def_path
+        | Some package -> Other package :: Other doc.module_ :: def_path
+      in
+      let+ loc_ident = lookup_def_path dpath in
       let status = match Why3session.get_theory loc_ident.Hacky_coma_parser.ident with
         | None -> RustInfo.Unknown
         | Some thy -> status_of_thy thy
@@ -216,7 +227,8 @@ let get_rust_lenses uri =
     in
     proof_lens @ [coma_lens]
   in
-  get_rust_info ~path:(DocumentUri.to_path uri)
+  let path = DocumentUri.to_path uri in
+  get_rust_info ~package:(crate_of path) ~path
     |> List.concat_map to_lsp_lenses
 
 let get_rust_diagnostics uri =
@@ -237,7 +249,8 @@ let get_rust_diagnostics uri =
           DiagnosticSeverity.Warning
           Array.(to_list (map to_related_information goals))]
   in
-  get_rust_info ~path:(DocumentUri.to_path uri)
+  let path = DocumentUri.to_path uri in
+  get_rust_info ~package:(crate_of path) ~path
       |> List.concat_map to_lsp_diagnostics
 
 let proof_json path =
