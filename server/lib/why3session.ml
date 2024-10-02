@@ -81,7 +81,9 @@ let debug_theories () =
   String.concat "" !r
 
 let get_theory (name : string) =
-  Hashtbl.find_opt theories name
+  let r = Hashtbl.find_opt theories name in
+  if Option.is_none r then Debug.debug ("No proof found for " ^ name);
+  r
 
 let encode_segment (s : string) =
   let rec encode i : char Seq.t = fun () ->
