@@ -13,6 +13,7 @@ let rec fprint_ty h = function
   | App (q, []) -> fprint_qualid h q
   | App (q, ts) -> fprintf h "%a<%a>" fprint_qualid q (fprint_list fprint_ty ", ") ts
   | Unit -> fprintf h "()"
+  | Tup ts -> fprintf h "(%a)" (fprint_list fprint_ty ",") ts
 
 let fprint_impl_subject h = function
   | Trait (t1, t2) -> fprintf h "<%a as %a>" fprint_ty t1 fprint_ty t2
@@ -20,6 +21,7 @@ let fprint_impl_subject h = function
 
 let fprint_def_path_item h = function
   | Impl i -> fprintf h "impl{%a}" fprint_impl_subject i
+  | Unknown s -> fprintf h "unknown{%s}" s
   | Other s -> fprintf h "%s" s
 
 let fprint_def_path h =

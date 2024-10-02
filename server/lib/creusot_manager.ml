@@ -68,6 +68,7 @@ let rec insert_trie (trie : trie) (path : Rust_syntax.def_path) (p : loc_ident) 
       | None -> let t = new_trie () in trie.impl_map <- (impl, t) :: trie.impl_map;
                 t in
       insert_trie t rest p
+  | Rust_syntax.Unknown _s :: _rest -> ()
 
 let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident option =
   match path with
@@ -78,6 +79,7 @@ let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident opti
   | Impl impl :: rest ->
       Option.bind (List.find_opt (fun (i, _) -> unify_impl_subject impl i) trie.impl_map)
         (fun (_, t) -> lookup_trie t rest)
+  | Rust_syntax.Unknown _s :: _rest -> None
 
 let m = Mutex.create ()
 

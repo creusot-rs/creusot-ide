@@ -69,6 +69,12 @@ and rust_lexer end_flag = parse
     | ',' { COMMA }
     | "()" { UNIT }
     | "::" { COLONCOLON }
+    | ":" { COLON }
+    | "+" { PLUS }
+    | "(" { LPAR }
+    | ")" { RPAR }
+    | "[" { LBRA }
+    | "]" { RBRA }
     | "*)" { end_flag := true; EOF }
     | ' '+ { rust_lexer end_flag lexbuf }
 

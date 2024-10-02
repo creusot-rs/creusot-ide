@@ -14,6 +14,7 @@ let funnames : (def_path * span) list ref = ref []
 let get_funnames () = !funnames
 type stack_symbol
     = Curly
+    | Trait
     | Mod of string
     | Impl of impl_subject option
 let stack = ref []
@@ -27,8 +28,9 @@ let mk_name name =
     let rec unstack qname = function
         | [] -> qname
         | Curly :: s -> unstack qname s
+        | Trait :: s -> unstack (Rust_syntax.Unknown "trait" :: qname) s
         | Mod m :: s -> unstack (Rust_syntax.Other m :: qname) s
-        | Impl None :: s -> unstack qname s (* TODO: do something sensible *)
+        | Impl None :: s -> unstack (Rust_syntax.Unknown "impl" :: qname) s
         | Impl (Some impl) :: s -> unstack (Rust_syntax.Impl impl :: qname) s
     in
     unstack [Other name] !stack
@@ -49,6 +51,9 @@ rule rust = parse
         push_stack (Mod modname);
         rust lexbuf
     }
+    | "trait" [^ '\n' '/' '{']* '{' {
+        push_stack Trait; rust lexbuf
+    }
     | '{' { push_stack Curly; rust lexbuf }
     | "fn" white+ (ident as name) {
         line_incs lexbuf;
@@ -61,6 +66,8 @@ rule rust = parse
         match Rust_parser.impl_subject1 (rust_lexer end_flag) lexbuf with
         | impl -> push_impl (Some impl); rust lexbuf
         | exception _ ->
+            let currp = lexbuf.lex_curr_p in
+            Debug.debug (Printf.sprintf "%s:%d:%d: failed to parse impl" currp.pos_fname currp.pos_lnum (currp.pos_cnum - currp.pos_bol + 1));
             push_impl None;
             if !end_flag then rust lexbuf
             else rust_impl_start lexbuf
@@ -86,13 +93,19 @@ and rust_impl_start = parse
     | _ { rust_impl_start lexbuf }
 
 and rust_lexer end_flag = parse
+    | "for" { FOR }
     | ident { IDENT (Lexing.lexeme lexbuf) }
     | '<' { LANGLE }
     | '>' { RANGLE }
     | ',' { COMMA }
     | "()" { UNIT }
     | "::" { COLONCOLON }
-    | "for" { FOR }
+    | ":" { COLON }
+    | "+" { PLUS }
+    | "(" { LPAR }
+    | ")" { RPAR }
+    | "[" { LBRA }
+    | "]" { RBRA }
     | "{" { end_flag := true; EOF }
     | white+ { line_incs lexbuf; rust_lexer end_flag lexbuf }
 
