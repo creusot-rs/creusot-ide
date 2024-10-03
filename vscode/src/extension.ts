@@ -109,5 +109,28 @@ export function activate(context: ExtensionContext) {
     registerCommand(context, "creusot.prove", async () => {
         const exec = await vscode.tasks.executeTask(creusotProve)
     })
+
+    /* Virtual document to show Why3 proof context */
+    const why3Scheme = 'why3';
+    const why3DocProvider = new class implements vscode.TextDocumentContentProvider {
+        onDidChangeEmitter = new vscode.EventEmitter<Uri>();
+        onDidChange = this.onDidChangeEmitter.event;
+        content = "";
+        newText(newContent) {
+            this.content = newContent;
+        }
+        provideTextDocumentContent(uri: Uri) : string {
+            return this.content;
+        }
+    }
+    context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(why3Scheme, why3DocProvider));
+    const virtualFileName = "Task";
+    const uri = vscode.Uri.parse('why3:' + virtualFileName);
+    registerCommand(context, "creusot.showTask", async (s: string) => {
+        why3DocProvider.newText(s);
+        why3DocProvider.onDidChangeEmitter.fire(uri);
+        const doc = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(doc, { preview: false });
+    });
     const client = startServer(context);
 }
