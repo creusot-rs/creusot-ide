@@ -133,8 +133,6 @@ class lsp_server =
           self#refresh_all ~notify_back change.uri
       | _ -> Lwt.return ()
 
-    val files_with_diags : (DocumentUri.t, unit) Hashtbl.t = Hashtbl.create 32
-
     method private refresh_all ~notify_back uri : _ t =
       let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _result -> Lwt.return ()) in
       let open Util.Async in
@@ -151,10 +149,10 @@ class lsp_server =
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
         ?languageId
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
-        let* () = Debug.debug_handler (log_info notify_back) (fun () -> self#refresh_file ~languageId uri ~content) in
+        let* () = Debug.debug_handler (log_info notify_back) (fun () -> self#refresh_file ~notify_back ~languageId uri ~content) in
         self#update_diagnostics ~notify_back uri
 
-    method private refresh_file ?languageId (uri : DocumentUri.t) ~content =
+    method private refresh_file ~notify_back ?languageId (uri : DocumentUri.t) ~content =
       let path = DocumentUri.to_path uri in
       let rusty = match languageId with
         | Some (Some "rust") -> true
@@ -162,7 +160,6 @@ class lsp_server =
         | None -> Filename.check_suffix path ".rs"
       in
       if rusty then (
-        Hashtbl.add files_with_diags uri ();
         let base = Filename.chop_suffix path ".rs" in
         let coma = base ^ ".coma" in
         let why3session = Filename.concat base "why3session.xml" in
@@ -199,8 +196,37 @@ class lsp_server =
       }
 
     method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
+      let path = DocumentUri.to_path uri in
       Debug.debug_handler (log_info notify_back) @@ fun () ->
-        Creusot_manager.get_rust_lenses uri
+        if Filename.check_suffix path ".rs" then
+          Creusot_manager.get_rust_lenses uri
+        else if Filename.basename path = "proof.json" then
+          let zero = Position.create ~line:0 ~character:0 in
+          [CodeLens.create
+            ~command:(Command.create
+              ~title:"Show context"
+              ~command:"creusot.showTask"
+              ~arguments:[`String "TASK"]
+              ())
+            ~range:{ start = zero; end_ = zero }
+            ()
+          ]
+        else []
+
+    method! on_unknown_request ~notify_back ~server_request ~id name req : Yojson.Safe.t t =
+      let open Lsp.Import in
+      match name with
+      | "creusot/show" -> (
+        match req with
+        | None -> Lwt.return `Null (* error *)
+        | Some req ->
+          match Jsonrpc.Structured.yojson_of_t req with
+          | `List [arg] ->
+            let* _ = log_info notify_back (Yojson.Safe.to_string arg) in
+            Lwt.return arg
+          | _ -> Lwt.return `Null
+      )
+      | _ -> super#on_unknown_request ~notify_back ~server_request ~id name req
   end
 
 let run () =

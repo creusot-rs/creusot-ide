@@ -33,7 +33,15 @@ let from_proof_json (fpath: string) json =
       (name, { path = fpath; name; unproved_goals })
 
 let parse_proof_json ~fname contents =
-  from_proof_json fname (Yojson.Safe.from_string ~fname contents)
+  match Yojson.Safe.from_string ~fname contents with
+  | json -> from_proof_json fname json
+  | exception Yojson.Json_error e ->
+    Debug.debug ("Could not parse JSON " ^ fname ^ ": " ^ e);
+    []
 
 let read_proof_json ~fname =
-  from_proof_json fname (Yojson.Safe.from_file fname)
+  match Yojson.Safe.from_file fname with
+  | json -> from_proof_json fname json
+  | exception Yojson.Json_error e ->
+    Debug.debug ("Could not parse JSON " ^ fname ^ ": " ^ e);
+    []
