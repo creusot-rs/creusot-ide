@@ -16,7 +16,7 @@ import { runInContext } from "vm";
 
 function getServerExecutable(context) : Executable {
     return {
-        command: Uri.joinPath(context.extensionUri, "../server/_build/default/bin/main.exe").fsPath,
+        command: Uri.joinPath(context.extensionUri, "../_build/default/server/bin/main.exe").fsPath,
     }
 }
 
