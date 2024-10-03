@@ -8,6 +8,7 @@
   lwt
   lsp
   why3
+  why3find
   uri
   toml
   yojson

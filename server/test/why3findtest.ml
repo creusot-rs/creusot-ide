@@ -19,4 +19,11 @@ let () =
     ~format
     theories
   in
-  ()
+  Session.theories s |> List.iter @@ fun theory ->
+    Printf.printf "THEORY %s\n" (Session.name theory);
+    Session.split theory |> List.iter @@ fun goal ->
+      Printf.printf "- GOAL %s\n" (Session.goal_name goal);
+      let task = Session.goal_task goal in
+      Printf.printf "  - TASK %s\n" (Session.task_name task);
+      Printf.printf "    %s\n" (Session.task_expl task);
+      Format.printf "    task:\n%a@." Why3.Pretty.print_sequent task
