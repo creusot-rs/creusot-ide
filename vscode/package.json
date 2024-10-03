@@ -20,18 +20,18 @@
   "main": "./out/main.js",
   "contributes": {
     "commands": [
-        {
-            "command": "creusot.build",
-            "title": "Creusot Build"
-        },
-        {
-            "command": "creusot.why3ide",
-            "title": "Launch Why3 IDE"
-        },
-        {
-            "command": "creusot.prove",
-            "title": "Why3find Prove"
-        }
+      {
+        "command": "creusot.build",
+        "title": "Creusot Build"
+      },
+      {
+        "command": "creusot.why3ide",
+        "title": "Launch Why3 IDE"
+      },
+      {
+        "command": "creusot.prove",
+        "title": "Why3find Prove"
+      }
     ],
     "languages": [
       {
