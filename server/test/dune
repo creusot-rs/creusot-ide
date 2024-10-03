@@ -2,3 +2,8 @@
  (public_name test)
  (name main)
  (libraries creusot_lsp why3 linol-lwt lsp logs uri lwt.unix ))
+
+(executable
+ (public_name why3findtest)
+ (name why3findtest)
+ (libraries creusot_lsp why3 why3find))
