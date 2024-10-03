@@ -214,7 +214,6 @@ class lsp_server =
         else []
 
     method! on_unknown_request ~notify_back ~server_request ~id name req : Yojson.Safe.t t =
-      let open Lsp.Import in
       match name with
       | "creusot/show" -> (
         match req with

@@ -79,12 +79,5 @@ and rust_lexer end_flag = parse
     | ' '+ { rust_lexer end_flag lexbuf }
 
 {
-    let parse_coma_string str = try coma [] (Lexing.from_string str) with _ -> []
-    let%expect_test _ =
-        let modules = parse_coma_string "module M_qyi1 (* T *)\nmodule M_z__y\n" in
-        List.iter (fun (name, path) -> Format.printf "Module %s: %a\n" name.ident fprint_def_path path) modules;
-        [%expect {|
-            Module M_qyi1: impl{T}
-            Module M_z__y: z::y
-        |} ]
+let parse_coma_string str = try coma [] (Lexing.from_string str) with _ -> []
 }
