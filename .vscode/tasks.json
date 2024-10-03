@@ -5,7 +5,7 @@
             "label": "Build Server",
             "type": "shell",
             "command": "dune",
-            "args": ["build", "--root=server"],
+            "args": ["build"],
             "problemMatcher": [
                 "$ocamlc"
             ],

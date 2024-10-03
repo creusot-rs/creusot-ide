@@ -8,6 +8,7 @@
  (synopsis "Language server for Creusot")
  (depends
   "why3"
+  "why3find"
   "ocaml-lsp-server"
   "lwt"
   "linol"
