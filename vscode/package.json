@@ -36,7 +36,8 @@
     "languages": [
       {
         "id": "coma",
-        "extensions": [".coma"]
+        "extensions": [".coma"],
+        "configuration": "./languages/coma.json"
       },
       {
         "id": "why3session",
@@ -63,7 +64,14 @@
                 "group": "2_creusot"
             }
         ]
-    }
+    },
+    "grammars": [
+        {
+            "language": "coma",
+            "scopeName": "source.coma",
+            "path": "./syntaxes/coma.json"
+        }
+    ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build-base -- --minify",

@@ -1,0 +1,97 @@
+{
+    "scopeName": "source.coma",
+    "patterns": [
+        { "include": "#expression" }
+    ],
+    "repository": {
+        "expression": {
+            "patterns": [
+                { "include": "#attribute" },
+                { "include": "#string" },
+                { "include": "#comments" },
+                { "include": "#keywords.other" },
+                { "include": "#keywords" },
+                { "include": "#keywords.control" },
+                { "include": "#constant" },
+                { "include": "#paren-expression" },
+                { "include": "#constructor"},
+                { "include": "#ident" },
+                { "include": "#number" }
+            ]
+        },
+        "comments": {
+            "begin": "\\(\\*",
+            "end": "\\*\\)",
+            "name": "comment.block"
+        },
+        "keywords": {
+            "match": "\\b(?:module|use|type|function|predicate|axiom|goal|end|absurd|return|abstract|alias|as|assert|at|break|by|check|clone|coinductive|constant|continue|diverges|ensures|requires|epsilon|exception|export|float|import|inductive|invariant|label|lemma|meta|mutable|not|old|partial|private|raises|range|reads|writes|scope|so|theory|val|variant|with)\\b(?!')",
+            "name": "keyword"
+        },
+        "keywords.control": {
+            "match": "\\b(?:let|in|fun|rec|if|then|else|forall|exists|any|try|while|do|done|downto|to|ghost|match|pure|raise|ref)\\b",
+            "name": "keyword.control"
+        },
+        "constant": {
+            "match": "\\b(?:true|false)\\b",
+            "name": "constant.language"
+        },
+        "keywords.other": {
+            "match": "\\blet%(?:span|attr)\\b",
+            "name": "keyword.other"
+        },
+        "string": {
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "match": "\\\\.",
+                    "name": "constant.character.escape.untitled"
+                }
+            ],
+            "name": "string.quoted.double"
+        },
+        "attribute": {
+            "begin": "\\[[%@]",
+            "end": "\\]",
+            "name": "entity.other"
+        },
+        "paren-expression": {
+            "begin": "\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.paren.open" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.paren.close" }
+            },
+            "name": "expression.group",
+            "patterns": [{ "include": "#expression" }]
+        },
+        "ident": {
+            "patterns": [{ "include": "#tyvar" }, { "include": "#qident" }]
+        },
+        "qident": {
+            "match": "\\b((?:[a-zA-Z][a-zA-Z0-9_']*\\.)*)([a-z][a-zA-Z0-9_']*|_[a-zA-Z0-9_']+)",
+            "captures": {
+                "1": { "name": "variable.namespace" },
+                "2": { "name": "variable" }
+            }
+        },
+        "tyvar": {
+            "match": "\\'[a-zA-Z0-9_']+\\b",
+            "name": "variable"
+        },
+        "constructor": {
+            "match": "\\b((?:[a-zA-Z][a-zA-Z0-9_']*\\.)*)([A-Z][a-zA-Z0-9_']*)",
+            "captures": {
+                "1": { "name": "variable.namespace" },
+                "2": { "name": "support.class" }
+            }
+        },
+        "number": {
+            "match": "\\b(?:0[xX][0-9a-fA-F]+|0[oO][0-7]+|0[bB][01]+|\\d+(?:\\.\\d+)?(?:[eE][+-]?\\d+)?)\\b",
+            "name": "constant.numeric"
+        }
+    }
+  }
