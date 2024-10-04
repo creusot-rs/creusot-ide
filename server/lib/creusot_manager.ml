@@ -338,7 +338,7 @@ let get_rust_diagnostics uri =
 
 let proof_json path =
   try
-    Why3find.read_proof_json ~fname:path
+    Why3findUtil.read_proof_json ~fname:path
       |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
   with
   | Sys_error _ -> ()

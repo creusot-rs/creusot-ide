@@ -201,12 +201,13 @@ class lsp_server =
         if Filename.check_suffix path ".rs" then
           Creusot_manager.get_rust_lenses uri
         else if Filename.basename path = "proof.json" then
+          let coma = Filename.dirname path ^ ".coma" in
           let zero = Position.create ~line:0 ~character:0 in
           [CodeLens.create
             ~command:(Command.create
               ~title:"Show context"
               ~command:"creusot.showTask"
-              ~arguments:[`String "TASK"]
+              ~arguments:[Why3findUtil.ProofPath.to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_tuto__z2_linear_search__search"; vc = "vc_search"; tactics = [] })]
               ())
             ~range:{ start = zero; end_ = zero }
             ()
@@ -219,11 +220,16 @@ class lsp_server =
         match req with
         | None -> Lwt.return `Null (* error *)
         | Some req ->
-          match Jsonrpc.Structured.yojson_of_t req with
-          | `List [arg] ->
-            let* _ = log_info notify_back (Yojson.Safe.to_string arg) in
-            Lwt.return arg
-          | _ -> Lwt.return `Null
+          let arg = Jsonrpc.Structured.yojson_of_t req in
+          let* _ = log_info notify_back (Yojson.Safe.to_string arg) in
+          match Why3findUtil.ProofPath.of_json arg with
+          | None -> Lwt.return (`String "Error: invalid proof path")
+          | Some path ->
+            let goal = Why3findUtil.get_goal path in
+            let msg = match goal with
+            | None -> "No goal found"
+            | Some goal -> goal in
+            Lwt.return (`String msg)
       )
       | _ -> super#on_unknown_request ~notify_back ~server_request ~id name req
   end
