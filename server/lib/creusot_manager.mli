@@ -11,6 +11,7 @@ val coma_file_as_string : uri:DocumentUri.t -> path:string -> string -> unit
 val lookup_def_path : Rust_syntax.def_path -> Hacky_coma_parser.loc_ident option
 
 val get_coma_lenses : DocumentUri.t -> CodeLens.t list
+val get_coma_links : DocumentUri.t -> DocumentLink.t list
 
 type rust_doc = {
     module_: string;

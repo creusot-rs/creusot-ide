@@ -1,3 +1,5 @@
+open Lsp.Types
+
 module Lex = struct
   (* When we just started a new line *)
   let new_line lexbuf =
@@ -20,6 +22,13 @@ module Lex = struct
             Lexing.pos_lnum = pos.Lexing.pos_lnum + n_lines;
             Lexing.pos_bol = pos.Lexing.pos_cnum - len_last_line
         }
+
+  let range lexbuf =
+    let start = lexbuf.Lexing.lex_start_p in
+    let stop = lexbuf.Lexing.lex_curr_p in
+    Range.create
+      ~start:(Position.create ~line:start.Lexing.pos_lnum ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
+      ~end_:(Position.create ~line:stop.Lexing.pos_lnum ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol))
 end
 
 module Async = struct

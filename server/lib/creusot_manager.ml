@@ -109,14 +109,10 @@ let walk_trie t f =
   walk_ t
 
 module ComaInfo = struct
-  (* Info based on file alone *)
-  type mod_info = {
-    name: loc_ident;
-    demangled: string;
-    loc: Location.t option;
-  }
+  open Hacky_coma_parser
   type coma_file = {
-    modules: mod_info list;
+      modules: mod_info list;
+      locations: (Range.t * Location.t) list;
   }
   let coma_files : (DocumentUri.t, coma_file) Hashtbl.t = Hashtbl.create 16
   let add_file = Hashtbl.replace coma_files
@@ -130,24 +126,13 @@ let coma_lexbuf ~uri lexbuf =
   let open Hacky_coma_parser in
   let open ComaInfo in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_lnum = 0 };
-  match coma [] lexbuf with
-  | acc ->
-    let infos = ref [] in
-    let this_file = Filename.chop_suffix (lexbuf.lex_curr_p.pos_fname) ".coma" in
-    let relative = Filename.concat this_file in
-    acc |> List.iter (fun (name, loc, path) ->
-      let loc = loc |> Option.map (fun (rsfile, range) ->
-        let uri = DocumentUri.of_path (relative rsfile) in
-        Location.create ~uri ~range) in
-      let mod_info = {
-        name;
-        demangled = Rust_syntax.string_of_def_path path;
-        loc;
-      } in
-      infos := mod_info :: !infos;
-      insert_demangle name.ident path;
-      insert_def_path path name);
-    ComaInfo.add_file uri { modules = !infos }
+  let state = new_state () in
+  match coma state lexbuf with
+  | () ->
+    state.modules |> List.iter (fun mod_info ->
+      insert_demangle mod_info.name.ident mod_info.demangled;
+      insert_def_path mod_info.demangled mod_info.name);
+    ComaInfo.add_file uri { modules = state.State.modules; locations = state.State.locations }
   | exception e -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname ^ ": " ^ Printexc.to_string e)
 
 let coma_file ~uri (path : string) : bool =
@@ -174,12 +159,12 @@ let get_coma_lenses uri =
   | None -> Debug.debug ("not found " ^ DocumentUri.to_path uri); []
   | Some info ->
     info.modules |> List.map @@ fun info ->
-      let range = info.ComaInfo.name.loc.range in
+      let range = info.name.loc.range in
       let loc = match info.loc with
         | None -> []
         | Some loc -> [Location.yojson_of_t loc] in
       let command = Command.create
-        ~title:info.ComaInfo.demangled
+        ~title:(Rust_syntax.string_of_def_path info.demangled)
         ~command:"creusot.peekLocations"
         ~arguments:[
           DocumentUri.yojson_of_t uri;
@@ -189,6 +174,15 @@ let get_coma_lenses uri =
       CodeLens.create
         ~command
         ~range ()
+
+let get_coma_links uri =
+  match get_coma_info uri with
+  | None -> []
+  | Some info ->
+    info.locations |> List.map @@ fun (range, loc) ->
+      let target = loc.Location.uri in
+      (* TODO: append fragment "#LINE:COL" *)
+      DocumentLink.create ~range ~target ()
 
 type rust_doc = {
   module_: string;

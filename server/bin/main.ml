@@ -99,6 +99,11 @@ class lsp_server =
       in
       super#on_req_initialize ~notify_back params
 
+    method! config_modify_capabilities capabilities =
+      { capabilities with
+        documentLinkProvider = Some (DocumentLinkOptions.create ~resolveProvider:false ());
+      }
+
     method! on_notification_unhandled ~notify_back = function
       | Initialized ->
         (* We can start registering capabilities after receiving the Initialized notification. *)
@@ -221,6 +226,16 @@ class lsp_server =
         else if Filename.check_suffix path ".coma" then
             Creusot_manager.get_coma_lenses uri
         else []
+
+    method! on_request_unhandled (type a) ~notify_back ~id (r : a Lsp.Client_request.t) : a t =
+      match r with
+      | TextDocumentLink (DocumentLinkParams.{ textDocument = { uri }; _ }) ->
+        let path = DocumentUri.to_path uri in
+        Debug.debug_handler (log_info notify_back) @@ fun () ->
+        if Filename.check_suffix path ".coma" then
+            Some (Creusot_manager.get_coma_links uri)
+          else None
+      | _ -> super#on_request_unhandled ~notify_back ~id r
 
     method! on_unknown_request ~notify_back ~server_request ~id name req : Yojson.Safe.t t =
       match name with
