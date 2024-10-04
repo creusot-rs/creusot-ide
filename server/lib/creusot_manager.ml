@@ -108,31 +108,87 @@ let walk_trie t f =
   in
   walk_ t
 
-let coma_lexbuf lexbuf =
+module ComaInfo = struct
+  (* Info based on file alone *)
+  type mod_info = {
+    name: loc_ident;
+    demangled: string;
+    loc: Location.t option;
+  }
+  type coma_file = {
+    modules: mod_info list;
+  }
+  let coma_files : (DocumentUri.t, coma_file) Hashtbl.t = Hashtbl.create 16
+  let add_file = Hashtbl.replace coma_files
+  let lookup_file = Hashtbl.find_opt coma_files
+
+  type t = coma_file
+end
+
+let coma_lexbuf ~uri lexbuf =
   let open Lexing in
   let open Hacky_coma_parser in
+  let open ComaInfo in
   lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_lnum = 0 };
   match coma [] lexbuf with
   | acc ->
-    List.iter (fun (name, path) -> insert_demangle name.ident path; insert_def_path path name) acc
+    let infos = ref [] in
+    let this_file = Filename.chop_suffix (lexbuf.lex_curr_p.pos_fname) ".coma" in
+    let relative = Filename.concat this_file in
+    acc |> List.iter (fun (name, loc, path) ->
+      let loc = loc |> Option.map (fun (rsfile, range) ->
+        let uri = DocumentUri.of_path (relative rsfile) in
+        Location.create ~uri ~range) in
+      let mod_info = {
+        name;
+        demangled = Rust_syntax.string_of_def_path path;
+        loc;
+      } in
+      infos := mod_info :: !infos;
+      insert_demangle name.ident path;
+      insert_def_path path name);
+    ComaInfo.add_file uri { modules = !infos }
   | exception e -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname ^ ": " ^ Printexc.to_string e)
 
-let coma_file (path : string) : bool =
+let coma_file ~uri (path : string) : bool =
   try
     let h = open_in path in
     let lexbuf = Lexing.from_channel h in
     Lexing.set_filename lexbuf path;
-    coma_lexbuf lexbuf;
+    coma_lexbuf ~uri lexbuf;
     close_in h;
     true
   with
   | Sys_error _ -> false
   | e -> Debug.debug ("Unexpected exception: " ^ Printexc.to_string e); false
 
-let coma_file_as_string ~path (s : string) : unit =
+let coma_file_as_string ~uri ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
   Lexing.set_filename lexbuf path;
-  coma_lexbuf lexbuf
+  coma_lexbuf ~uri lexbuf
+
+let get_coma_info uri = ComaInfo.lookup_file uri
+
+let get_coma_lenses uri =
+  match get_coma_info uri with
+  | None -> Debug.debug ("not found " ^ DocumentUri.to_path uri); []
+  | Some info ->
+    info.modules |> List.map @@ fun info ->
+      let range = info.ComaInfo.name.loc.range in
+      let loc = match info.loc with
+        | None -> []
+        | Some loc -> [Location.yojson_of_t loc] in
+      let command = Command.create
+        ~title:info.ComaInfo.demangled
+        ~command:"creusot.peekLocations"
+        ~arguments:[
+          DocumentUri.yojson_of_t uri;
+          Position.(yojson_of_t range.Range.start);
+          `List loc]
+        () in
+      CodeLens.create
+        ~command
+        ~range ()
 
 type rust_doc = {
   module_: string;

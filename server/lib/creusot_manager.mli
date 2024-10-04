@@ -2,13 +2,15 @@ open Lsp.Types
 
 val lookup_demangle : string -> Rust_syntax.def_path option
 
-val coma_file : string -> bool
+val coma_file : uri:DocumentUri.t -> string -> bool
 (** [true] if the file was found *)
 
-val coma_file_as_string : path:string -> string -> unit
+val coma_file_as_string : uri:DocumentUri.t -> path:string -> string -> unit
 (** Like [coma_file] except we already got the contents as a string (what we get in the DidOpen notification) *)
 
 val lookup_def_path : Rust_syntax.def_path -> Hacky_coma_parser.loc_ident option
+
+val get_coma_lenses : DocumentUri.t -> CodeLens.t list
 
 type rust_doc = {
     module_: string;
