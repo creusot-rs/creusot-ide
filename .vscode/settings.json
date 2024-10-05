@@ -1,6 +1,6 @@
 {
     "ocaml.sandbox": {
         "kind": "opam",
-        "switch": "base"
+        "switch": "${workspaceFolder:creusot-ide}"
     }
 }

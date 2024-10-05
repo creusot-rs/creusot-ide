@@ -17,3 +17,4 @@
   "xmlm"
   "uri")
  (authors "Li-yao Xia"))
+(generate_opam_files true)
