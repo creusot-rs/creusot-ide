@@ -4,15 +4,28 @@
         {
             "label": "Build Server",
             "type": "shell",
-            "command": "dune",
-            "args": ["build"],
+            "command": "opam",
+            "args": [
+                "exec",
+                "dune",
+                "build"
+            ],
             "problemMatcher": [
                 "$ocamlc"
             ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            }
+            "group": "build"
+        },
+        {
+            "label": "Clean Ocaml Artifacts",
+            "type": "shell",
+            "command": "dune",
+            "args": [
+                "clean"
+            ],
+            "problemMatcher": [
+                "$ocamlc"
+            ],
+            "group": "none"
         },
         {
             "label": "Build Extension",
@@ -37,7 +50,8 @@
             "problemMatcher": [
                 "$ocamlc",
                 "$tsc"
-            ]
-        }
+            ],
+            "group": "build"
+        },
     ]
 }
