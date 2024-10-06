@@ -1,7 +1,7 @@
 (executable
- (public_name creusotlsp)
+ (public_name creusot-lsp)
  (package creusot-lsp)
- (name main)
+ (name creusot_lsp)
  (flags
   (:standard
    (:include linking-flags-fserv.sexp)))

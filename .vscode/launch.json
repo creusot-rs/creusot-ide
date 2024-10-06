@@ -10,6 +10,9 @@
 			"args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceRoot}/vscode"],
 			"outFiles": ["${workspaceRoot}/vscode/out/**/*.js"],
 			"preLaunchTask": "Build Server and Extension",
+            "env": {
+                "PATH": "${env:PATH}:${workspaceRoot}/_build/install/default/bin"
+            }
 		},
 	],
 }

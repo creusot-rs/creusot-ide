@@ -19,6 +19,16 @@
   ],
   "main": "./out/main.js",
   "contributes": {
+    "configuration": {
+        "title": "Creusot",
+        "properties": {
+            "creusot.lspPath": {
+                "type": "string",
+                "default": "",
+                "description": "Path to the creusot-lsp executable"
+            }
+        }
+    },
     "commands": [
       {
         "command": "creusot.build",

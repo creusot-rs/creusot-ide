@@ -1,6 +1,6 @@
 (executable
- (public_name test)
- (name main)
+ (public_name creusot-test)
+ (name creusot_test)
  (libraries creusot_lsp why3 linol-lwt lsp logs uri lwt.unix))
 
 (executable

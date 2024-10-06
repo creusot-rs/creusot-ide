@@ -15,8 +15,11 @@ import { access, existsSync } from "fs";
 import { runInContext } from "vm";
 
 function getServerExecutable(context) : Executable {
-    return {
-        command: Uri.joinPath(context.extensionUri, "../_build/default/server/bin/main.exe").fsPath,
+    const lspPath : string | undefined = workspace.getConfiguration("creusot").get("lspPath");
+    if (lspPath === undefined || lspPath === "") {
+        return { command: "creusot-lsp" };
+    } else {
+        return { command: lspPath };
     }
 }
 
