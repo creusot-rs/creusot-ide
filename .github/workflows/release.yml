@@ -147,10 +147,10 @@ jobs:
           name: no-server
           path: dist
 
-      - uses: actions/download-artifact@v4
-        with:
-          name: linux-x64
-          path: dist
+      # - uses: actions/download-artifact@v4
+      #   with:
+      #     name: linux-x64
+      #     path: dist
 
       - run: ls -al ./dist
 
