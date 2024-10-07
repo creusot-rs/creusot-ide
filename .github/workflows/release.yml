@@ -119,7 +119,7 @@ jobs:
           path: ./dist
 
   publish:
-    needs: [check_date]
+    needs: [build_server,check_date]
     runs-on: ubuntu-latest
     steps:
       - name: Install Nodejs
