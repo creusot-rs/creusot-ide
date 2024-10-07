@@ -128,8 +128,10 @@ and rust_lexer end_flag = parse
 {
 let parse_coma_string str =
     let state = new_state () in
+    let reverse () = state.modules <- List.rev state.modules; state.locations <- List.rev state.locations in
     try
         coma state (Lexing.from_string str);
+        reverse ();
         state
-    with _ -> state
+    with _ -> reverse (); state
 }

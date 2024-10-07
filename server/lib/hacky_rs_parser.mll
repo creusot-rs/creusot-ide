@@ -94,7 +94,12 @@ and rust_impl_start = parse
 
 and rust_lexer end_flag = parse
     | "for" { FOR }
+    | "where" { WHERE }
+    | "const" { CONST }
+    | '\'' ident { LIFETIME_OR_LABEL (Lexing.lexeme lexbuf) }
     | ident { IDENT (Lexing.lexeme lexbuf) }
+    | '=' { EQUALS }
+    | '#' { OCTOTHORPE }
     | '<' { LANGLE }
     | '>' { RANGLE }
     | ',' { COMMA }
@@ -102,13 +107,13 @@ and rust_lexer end_flag = parse
     | "::" { COLONCOLON }
     | ":" { COLON }
     | "+" { PLUS }
+    | "?" { QUESTION }
     | "(" { LPAR }
     | ")" { RPAR }
     | "[" { LBRA }
     | "]" { RBRA }
     | "{" { end_flag := true; EOF }
     | white+ { line_incs lexbuf; rust_lexer end_flag lexbuf }
-
 
 {
 let list_names lexbuf =
