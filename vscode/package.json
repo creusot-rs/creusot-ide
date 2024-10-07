@@ -3,7 +3,7 @@
   "displayName": "Creusot IDE",
   "description": "LSP client for Creusot",
   "version": "0.1.1",
-  "publisher": "lysxia",
+  "publisher": "creusot-rs",
   "repository": "https://github.com/creusot-rs/creusot-ide",
   "engines": {
     "vscode": "^1.75.0"
