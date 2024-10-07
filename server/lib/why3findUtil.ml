@@ -62,9 +62,9 @@ module ProofPath = struct
 
   let force_tactic_path = List.map @@ fun (tac, i) -> (match !tac with None -> "_" | Some tac -> tac), i
 
-  let pp_tactic_path h = function
+  let rec pp_tactic_path h = function
     | [] -> ()
-    | (tac, i) :: t -> Format.fprintf h ".%s.%d" tac i
+    | (tac, i) :: t -> Format.fprintf h ".%s.%d" tac i; pp_tactic_path h t
 
   let pp_ pp_tactic h t =
     Format.fprintf h "%s:%s:%s%a" t.file t.theory t.vc pp_tactic t.tactics
@@ -179,7 +179,7 @@ let parse_theories ~file visit decoder =
   eat_Os decoder;
   let rec loop () = match Jsonm.decode decoder with
     | `Lexeme (`Name th_name) ->
-      let acc = parse_theory ~file visit th_name decoder in
+      parse_theory ~file visit th_name decoder;
       loop ()
     | `Lexeme `Oe -> ()
     | e -> throw e decoder
