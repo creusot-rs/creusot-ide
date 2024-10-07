@@ -218,7 +218,7 @@ class lsp_server =
             ~command:(Command.create
               ~title:"Show context"
               ~command:"creusot.showTask"
-              ~arguments:[Why3findUtil.ProofPath.to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_tuto__z2_linear_search__search"; vc = "vc_search"; tactics = [] })]
+              ~arguments:[Why3findUtil.ProofPath.to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_red_black_tree__qyi10312951825188598006"; vc = "resolve_coherence_refn"; tactics = [] })]
               ())
             ~range:{ start = zero; end_ = zero }
             ()

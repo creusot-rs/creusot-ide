@@ -49,13 +49,28 @@ let read_proof_json ~fname =
     []
 
 module ProofPath = struct
+  type lazy_tactic_path = (string option ref * int) list  (* tactic names might not have been resolved yet *)
   type tactic_path = (string * int) list  (* tactic * goalindex *)
-  type t = {
+  type 'a t0 = {
     file: string;
     theory: string;
     vc: string;
-    tactics: tactic_path;
+    tactics: 'a;
     }
+  type t = tactic_path t0
+  type lazy_t = lazy_tactic_path t0
+
+  let force_tactic_path = List.map @@ fun (tac, i) -> (match !tac with None -> "_" | Some tac -> tac), i
+
+  let pp_tactic_path h = function
+    | [] -> ()
+    | (tac, i) :: t -> Format.fprintf h ".%s.%d" tac i
+
+  let pp_ pp_tactic h t =
+    Format.fprintf h "%s:%s:%s%a" t.file t.theory t.vc pp_tactic t.tactics
+
+  let pp_lazy = pp_ (fun h t -> pp_tactic_path h (force_tactic_path t))
+  let pp = pp_ pp_tactic_path
 
   let tactic_path_to_json (p : tactic_path) : Yojson.Safe.t =
     `List (List.map (fun (tactic, i) -> `List [`String tactic; `Int i]) p)
@@ -94,6 +109,112 @@ module ProofPath = struct
     )
     | _ -> None
 end
+
+exception BadJson of string
+
+let throw e decoder =
+  let (lnum, cnum), _ = Jsonm.decoded_range decoder in
+  let msg f x = Format.asprintf "JSON error at %d:%d, %a" lnum cnum f x in
+  match e with
+  | `Error e -> raise (BadJson (msg Jsonm.pp_error e))
+  | `Lexeme x -> raise (BadJson (msg (fun h -> Format.fprintf h "unexpected %a" Jsonm.pp_lexeme) x))
+  | _ -> raise (BadJson (msg (fun h () -> Format.fprintf h "unexpected EOF") ()))
+
+let eat_Os decoder = match Jsonm.decode decoder with
+  | `Lexeme `Os -> ()
+  | e -> throw e decoder
+
+let eat_As decoder = match Jsonm.decode decoder with
+  | `Lexeme `As -> ()
+  | e -> throw e decoder
+
+let eat_string decoder = match Jsonm.decode decoder with
+  | `Lexeme (`String str) -> str
+  | e -> throw e decoder
+
+type trailing_ae = TrailingAe | NoAe
+
+let rec parse_proofs_body ~file visit th_name vc_name decoder tactic_path =
+  let tactic = ref None in
+  let rec loop () = match Jsonm.decode decoder with
+    | `Lexeme (`Name "tactic") ->
+      let name = eat_string decoder in
+      tactic := Some name;
+      loop ()
+    | `Lexeme (`Name "children") ->
+      eat_As decoder;
+      let rec loop_children i = match parse_proofs ~file visit th_name vc_name decoder ((tactic, i) :: tactic_path) with
+        | TrailingAe -> ()
+        | NoAe -> loop_children (i + 1)
+        in loop_children 0
+    | `Lexeme (`Name ("prover" | "time" | "size")) ->
+      (* eat strings and numbers *)
+      (match Jsonm.decode decoder with
+      | `Lexeme (`String _ | `Float _) -> loop ()
+      | e -> throw e decoder)
+    | `Lexeme `Oe -> ()
+    | e -> throw e decoder
+  in loop ()
+
+and parse_proofs ~file visit th_name vc_name decoder tactic_path =
+  match Jsonm.decode decoder with
+  | `Lexeme `Os -> parse_proofs_body ~file visit th_name vc_name decoder tactic_path; NoAe
+  | `Lexeme `Null -> visit ProofPath.{ file; theory = th_name; vc = vc_name; tactics = tactic_path }; NoAe
+  | `Lexeme `Ae -> TrailingAe
+  | e -> throw e decoder
+
+let parse_theory ~file visit th_name decoder =
+  eat_Os decoder;
+  let rec loop () = match Jsonm.decode decoder with
+    | `Lexeme (`Name vc_name) ->
+      (match parse_proofs ~file visit th_name vc_name decoder [] with
+      | TrailingAe -> throw (`Lexeme `Ae) decoder
+      | NoAe -> loop ())
+    | `Lexeme `Oe -> ()
+    | e -> throw e decoder
+    in
+  loop ()
+
+let parse_theories ~file visit decoder =
+  eat_Os decoder;
+  let rec loop () = match Jsonm.decode decoder with
+    | `Lexeme (`Name th_name) ->
+      let acc = parse_theory ~file visit th_name decoder in
+      loop ()
+    | `Lexeme `Oe -> ()
+    | e -> throw e decoder
+    in loop ()
+
+let rec skip_json_ decoder : [`Ae] option = match Jsonm.decode decoder with
+    | `Lexeme `As ->
+      let rec skip_items () = match skip_json_ decoder with
+        | Some `Ae -> None
+        | None -> skip_items ()
+      in skip_items ()
+    | `Lexeme `Os ->
+      let rec skip_members () =
+        match Jsonm.decode decoder with
+        | `Lexeme `Oe -> ()
+        | `Lexeme (`Name _) -> skip_json decoder
+        | e -> throw e decoder
+      in skip_members (); None
+    | `Lexeme (`Null | `String _ | `Float _ | `Bool _) -> None
+    | `Lexeme `Ae -> Some `Ae
+    | e -> throw e decoder
+
+and skip_json decoder =
+  match skip_json_ decoder with
+  | None -> ()
+  | Some e -> throw (`Lexeme e) decoder
+
+let parse_json ~file visit decoder =
+  eat_Os decoder;
+  let rec loop () = match Jsonm.decode decoder with
+    | `Lexeme (`Name "proofs") -> parse_theories ~file visit decoder
+    | `Lexeme (`Name _) -> skip_json decoder; loop ()
+    | `Lexeme `Oe -> () (* no proofs found *)
+    | e -> throw e decoder in
+  loop ()
 
 let get_env () =
   let config = Config.load_config "." in

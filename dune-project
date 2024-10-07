@@ -15,6 +15,8 @@
   "linol-lwt"
   "toml"
   "xmlm"
-  "uri")
+  "uri"
+  "yojson"
+  "jsonm")
  (authors "Li-yao Xia"))
 (generate_opam_files true)

@@ -35,3 +35,11 @@ let%expect_test _ =
     let names = list_names lexbuf in
     List.iter (fun (def, _) -> Rust_syntax.print_def_path def) names);
     [%expect {| impl{Node<K>}::f |}]
+
+let%expect_test _ =
+  let open Jsonm in
+  let open Why3findUtil in
+  let decoder = decoder (`String {json|{"proofs": {"theory1": {"vc1": {"tactic": "split_vc", "children":[null]}}}}|json}) in
+  let visit info = Format.printf "%a" ProofPath.pp_lazy info in
+  parse_json ~file:"a.coma" visit decoder;
+  [%expect {| a.coma:theory1:vc1.split_vc.0 |}]

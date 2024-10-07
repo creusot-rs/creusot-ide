@@ -388,10 +388,45 @@ let get_rust_diagnostics uri =
   let info = get_rust_info ~package:(crate_of path) ~path in
   info.inline_items |> List.concat_map to_lsp_diagnostics
 
-let proof_json path =
+let proof_json_1 path =
   try
     Why3findUtil.read_proof_json ~fname:path
       |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
   with
   | Sys_error _ -> ()
   | e -> Debug.debug (Printexc.to_string e)
+
+type proof_info =
+  { loc: Range.t
+  ; proof_path: Why3findUtil.ProofPath.t
+  }
+
+let proof_locations : (string, proof_info list) Hashtbl.t = Hashtbl.create 16
+
+let tactics_of_json_path _ = None
+
+let proof_path_of_json_path file (p : Json_visitor.json_path) : Why3findUtil.ProofPath.t option =
+  let open Json_visitor in
+  let p = List.rev p in
+  match p with
+  | ObjectKey "proofs" :: ObjectKey theory :: ObjectKey vc :: p ->
+    let (let+) = Option.bind in
+    let+ tactics = tactics_of_json_path p in
+    Some Why3findUtil.ProofPath.{ file; theory; vc; tactics }
+  | _ -> None
+
+let proof_json_2 path =
+  try
+    let open Json_visitor in
+    let proof_locs = ref [] in
+    let visitor = { empty_visitor with
+      visit_null = fun jpath loc ->
+        proof_path_of_json_path path jpath |> Option.iter (fun proof_path ->
+          proof_locs := { loc; proof_path } :: !proof_locs) } in
+    visit_file visitor path;
+    Hashtbl.replace proof_locations path !proof_locs
+  with
+  | e -> Debug.debug ("JSON " ^ path ^ ": " ^ Printexc.to_string e)
+
+let proof_json path =
+  proof_json_1 path
