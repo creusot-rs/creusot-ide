@@ -29,8 +29,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ubuntu-latest
-            code-target: linux-x64
+          # - os: ubuntu-latest
+          #   code-target: linux-x64
 
           - os: ubuntu-latest
             code-target: no-server
