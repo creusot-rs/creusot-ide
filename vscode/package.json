@@ -11,7 +11,7 @@
   "categories": [
     "Other"
   ],
-  "icon": "./logo.png",
+  "icon": "./logo.jpeg",
   "activationEvents": [
     "onLanguage:rust",
     "onLanguage:coma",
