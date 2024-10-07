@@ -162,22 +162,23 @@ jobs:
         working-directory: ./ide
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../dist/creusot-ide-*.vsix
 
-      - name: Publish Extension (OpenVSX, nightly)
-        if: github.ref != 'refs/heads/release' && needs.check_date.outputs.should_run != 'true'
-        working-directory: ./ide
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../dist/creusot-ide-*.vsix
-        timeout-minutes: 2
+      # TODO(xavier): Get token on OpenVSX
+      # - name: Publish Extension (OpenVSX, nightly)
+      #   if: github.ref != 'refs/heads/release' && needs.check_date.outputs.should_run != 'true'
+      #   working-directory: ./ide
+      #   run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../dist/creusot-ide-*.vsix
+      #   timeout-minutes: 2
 
       - name: Publish Extension (Code Marketplace)
         if: github.ref == 'refs/heads/release'
         working-directory: ./ide
         run: npx vsce publish --pat ${{ secrets.MARKETPLACE_TOKEN }} --packagePath ../dist/creusot-ide-*.vsix
 
-      - name: Publish Extension (OpenVSX)
-        if: github.ref == 'refs/heads/release'
-        working-directory: ./ide
-        run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../dist/creusot-ide-*.vsix
-        timeout-minutes: 2
+      # - name: Publish Extension (OpenVSX)
+      #   if: github.ref == 'refs/heads/release'
+      #   working-directory: ./ide
+      #   run: npx ovsx publish --pat ${{ secrets.OPENVSX_TOKEN }} --packagePath ../dist/creusot-ide-*.vsix
+      #   timeout-minutes: 2
 
       # - name: Release
       # - name: Release
