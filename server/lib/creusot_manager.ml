@@ -234,9 +234,10 @@ module RustInfo = struct
     | Qed
     | ToProve of (string * Location.t) array
   type item = {
-      range: Range.t;
-      to_coma: Location.t;
-      status: status;
+    name: string; (* for debugging *)
+    range: Range.t;
+    to_coma: Location.t;
+    status: status;
   }
   type orphan_item = {
     orphan_name: string;
@@ -294,11 +295,12 @@ let get_rust_info ~package ~path : RustInfo.t =
           | None -> Other doc.module_ :: def_path
           | Some package -> Other package :: Other doc.module_ :: def_path
         in
+        let name = string_of_def_path dpath in
         let+ loc_ident = lookup_def_path dpath in
         let status = get_status loc_ident.ident in
         let to_coma = loc_ident.loc in
         Hashtbl.replace visited loc_ident.ident ();
-        Some RustInfo.{ range; to_coma; status }
+        Some RustInfo.{ name; range; to_coma; status }
     in
     let orphans = find_orphan_goals ~package doc.module_ (Hashtbl.mem visited) in
     RustInfo.{

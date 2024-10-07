@@ -33,6 +33,7 @@ module RustInfo : sig
         | Qed
         | ToProve of (string * Location.t) array
     type item = {
+        name: string;
         range: Range.t;
         to_coma: Location.t;
         status: status;
