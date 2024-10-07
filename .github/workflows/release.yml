@@ -93,15 +93,15 @@ jobs:
           mv package.nightly.json package.json
         working-directory: vscode
 
-      # - name: Package
-      #   run: npx vsce package -o "../dist/creusot-ide-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
-      #   if: github.ref == 'refs/heads/release' && matrix.code-target != 'no-server'
-      #   working-directory: vscode
+      - name: Package
+        run: npx vsce package -o "../dist/creusot-ide-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }}
+        if: github.ref == 'refs/heads/release' && matrix.code-target != 'no-server'
+        working-directory: vscode
 
-      # - name: Package (Nightly)
-      #   run: npx vsce package -o "../dist/creusot-ide-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }} --pre-release
-      #   if: github.ref != 'refs/heads/release' && matrix.code-target != 'no-server'
-      #   working-directory: vscode
+      - name: Package (Nightly)
+        run: npx vsce package -o "../dist/creusot-ide-${{ matrix.code-target }}.vsix" --target ${{ matrix.code-target }} --pre-release
+        if: github.ref != 'refs/heads/release' && matrix.code-target != 'no-server'
+        working-directory: vscode
 
       # Publish fallback
       - if: matrix.code-target == 'no-server' && github.ref == 'refs/heads/release'
