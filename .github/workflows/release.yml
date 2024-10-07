@@ -75,7 +75,7 @@ jobs:
   #     # - run: LINKING_MODE=static opam exec -- dune build --profile=release
 
       - run: npm ci
-        working-directory: ide
+        working-directory: vscode
 
       # - name: Copy server to bundle
       #   run: |
