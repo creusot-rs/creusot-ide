@@ -1,86 +1,49 @@
 open Why3find
 open Lsp.Types
-open Types
-
-let has_key key json =
-  let open Yojson.Safe.Util in
-  match member key json with
-  | `Null -> false
-  | _ -> true
-  | exception Type_error(_, _) -> false
-
-let rec find_unproved_goals_in jpath json =
-  let open Yojson.Safe.Util in
-  match json with
-  | `Null -> [{ goal_name = String.concat "." (List.rev jpath) }]
-  | `Assoc _ ->
-    if has_key "prover" json then []
-    else member "children" json |> to_list
-      |> List.mapi (fun i child ->
-        find_unproved_goals_in (string_of_int i :: jpath) child)
-      |> List.concat
-  | _ -> []
-
-let find_unproved_goals json =
-  let open Yojson.Safe.Util in
-  to_assoc json |> List.concat_map @@ fun (name, gjson) ->
-    find_unproved_goals_in [name] gjson
-
-let from_proof_json (fpath: string) json =
-  let open Yojson.Safe.Util in
-  member "proofs" json
-    |> to_assoc
-    |> List.map @@ fun (name, thjson) ->
-      let unproved_goals = Unproved (Array.of_list (find_unproved_goals thjson)) in
-      (name, { path = fpath; name; unproved_goals })
-
-let parse_proof_json ~fname contents =
-  match Yojson.Safe.from_string ~fname contents with
-  | json -> from_proof_json fname json
-  | exception Yojson.Json_error e ->
-    Debug.debug ("Could not parse JSON " ^ fname ^ ": " ^ e);
-    []
-
-let read_proof_json ~fname =
-  match Yojson.Safe.from_file fname with
-  | json -> from_proof_json fname json
-  | exception Yojson.Json_error e ->
-    Debug.debug ("Could not parse JSON " ^ fname ^ ": " ^ e);
-    []
+open Util
 
 module ProofPath = struct
   type lazy_tactic_path = (string option ref * int) list  (* tactic names might not have been resolved yet *)
   type tactic_path = (string * int) list  (* tactic * goalindex *)
-  type 'a t0 = {
-    file: string;
-    theory: string;
+  type 'a _goal = {
     vc: string;
     tactics: 'a;
     }
-  type t = tactic_path t0
-  type lazy_t = lazy_tactic_path t0
+  type goal = tactic_path _goal
+  type lazy_goal = lazy_tactic_path _goal
+  type 'a with_theory = {
+    file: string;  (* The source coma file *)
+    theory: string;
+    goal_info: 'a;
+  }
+  type theory = (goal * Position.t) list with_theory
+  type full_goal = goal with_theory
 
-  let force_tactic_path = List.map @@ fun (tac, i) -> (match !tac with None -> "_" | Some tac -> tac), i
+  let force_tactic_path : lazy_tactic_path -> tactic_path =
+    List.map @@ fun (tac, i) -> (match !tac with None -> "_" | Some tac -> tac), i
 
-  let rec pp_tactic_path h = function
-    | [] -> ()
-    | (tac, i) :: t -> Format.fprintf h ".%s.%d" tac i; pp_tactic_path h t
+  let pp_tactic_path h =
+    Format.pp_print_list (fun h (tac, i) -> Format.fprintf h ".%s.%d" tac i) h
 
-  let pp_ pp_tactic h t =
-    Format.fprintf h "%s:%s:%s%a" t.file t.theory t.vc pp_tactic t.tactics
+  let pp_goal_ pp_tactic h t =
+    Format.fprintf h "%s%a" t.vc pp_tactic t.tactics
 
-  let pp_lazy = pp_ (fun h t -> pp_tactic_path h (force_tactic_path t))
-  let pp = pp_ pp_tactic_path
+  let pp_lazy_goal = pp_goal_ (fun h t -> pp_tactic_path h (force_tactic_path t))
+  let pp_goal = pp_goal_ pp_tactic_path
+
+  let pp_goals h = Format.pp_print_list (fun h (goal, _pos) -> pp_goal h goal) h
+
+  let pp_theory h t = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goals t.goal_info
 
   let tactic_path_to_json (p : tactic_path) : Yojson.Safe.t =
     `List (List.map (fun (tactic, i) -> `List [`String tactic; `Int i]) p)
 
-  let to_json (p : t) : Yojson.Safe.t =
+  let full_goal_to_json (p : full_goal) : Yojson.Safe.t =
     `Assoc [
       "file", `String p.file;
       "theory", `String p.theory;
-      "vc", `String p.vc;
-      "path", tactic_path_to_json p.tactics;
+      "vc", `String p.goal_info.vc;
+      "tactics", tactic_path_to_json p.goal_info.tactics;
     ]
 
   let rec map_option f = function
@@ -96,19 +59,21 @@ module ProofPath = struct
       | _ -> None) l
     | _ -> None
 
-  let of_json (j : Yojson.Safe.t) : t option =
+  let full_goal_of_json (j : Yojson.Safe.t) : full_goal option =
     let (let+) = Option.bind in
     let open Yojson.Safe.Util in
     match j with
-    | `Assoc l -> (
+    | `Assoc _l -> (
       let+ file = to_string_option @@ member "file" j in
       let+ theory = to_string_option @@ member "theory" j in
       let+ vc = to_string_option @@ member "vc" j in
-      let+ tactics = member "path" j |> tactic_path_of_json in
-      Some { file; theory; vc; tactics }
+      let+ tactics = member "tactics" j |> tactic_path_of_json in
+      Some { file; theory; goal_info = { vc; tactics } }
     )
     | _ -> None
 end
+
+open ProofPath
 
 exception BadJson of string
 
@@ -134,7 +99,7 @@ let eat_string decoder = match Jsonm.decode decoder with
 
 type trailing_ae = TrailingAe | NoAe
 
-let rec parse_proofs_body ~file visit th_name vc_name decoder tactic_path =
+let rec parse_proofs_body ~file visit decoder tactic_path =
   let tactic = ref None in
   let rec loop () = match Jsonm.decode decoder with
     | `Lexeme (`Name "tactic") ->
@@ -143,7 +108,7 @@ let rec parse_proofs_body ~file visit th_name vc_name decoder tactic_path =
       loop ()
     | `Lexeme (`Name "children") ->
       eat_As decoder;
-      let rec loop_children i = match parse_proofs ~file visit th_name vc_name decoder ((tactic, i) :: tactic_path) with
+      let rec loop_children i = match parse_proofs ~file visit decoder ((tactic, i) :: tactic_path) with
         | TrailingAe -> ()
         | NoAe -> loop_children (i + 1)
         in loop_children 0
@@ -156,30 +121,40 @@ let rec parse_proofs_body ~file visit th_name vc_name decoder tactic_path =
     | e -> throw e decoder
   in loop ()
 
-and parse_proofs ~file visit th_name vc_name decoder tactic_path =
+and parse_proofs ~file visit decoder tactic_path =
   match Jsonm.decode decoder with
-  | `Lexeme `Os -> parse_proofs_body ~file visit th_name vc_name decoder tactic_path; NoAe
-  | `Lexeme `Null -> visit ProofPath.{ file; theory = th_name; vc = vc_name; tactics = tactic_path }; NoAe
+  | `Lexeme `Os -> parse_proofs_body ~file visit decoder tactic_path; NoAe
+  | `Lexeme `Null ->
+    let (line, character), _ = Jsonm.decoded_range decoder in
+    let position = Position.create ~line:(line - 1) ~character in
+    visit position tactic_path; NoAe
   | `Lexeme `Ae -> TrailingAe
   | e -> throw e decoder
 
-let parse_theory ~file visit th_name decoder =
+let parse_theory ~file visit decoder =
   eat_Os decoder;
+  let goals = ref [] in
   let rec loop () = match Jsonm.decode decoder with
-    | `Lexeme (`Name vc_name) ->
-      (match parse_proofs ~file visit th_name vc_name decoder [] with
+    | `Lexeme (`Name vc) ->
+      let visit_goal = fun position tactics -> goals := ({ vc; tactics }, position) :: !goals in
+      (match parse_proofs ~file visit_goal decoder [] with
       | TrailingAe -> throw (`Lexeme `Ae) decoder
       | NoAe -> loop ())
     | `Lexeme `Oe -> ()
     | e -> throw e decoder
     in
-  loop ()
+  loop ();
+  (* After traversing the vc the tactic names should be known *)
+  let force_goal ({ vc; tactics }, position) =
+    { vc; tactics = force_tactic_path tactics }, position in
+  visit (List.map force_goal !goals)
 
-let parse_theories ~file visit decoder =
+let parse_theories ~file (visit : theory -> unit) decoder =
   eat_Os decoder;
   let rec loop () = match Jsonm.decode decoder with
-    | `Lexeme (`Name th_name) ->
-      parse_theory ~file visit th_name decoder;
+    | `Lexeme (`Name theory) ->
+      let visit_goals = fun goal_info -> visit { file; theory; goal_info } in
+      parse_theory ~file visit_goals decoder;
       loop ()
     | `Lexeme `Oe -> ()
     | e -> throw e decoder
@@ -207,7 +182,7 @@ and skip_json decoder =
   | None -> ()
   | Some e -> throw (`Lexeme e) decoder
 
-let parse_json ~file visit decoder =
+let parse_json ~file (visit : theory -> unit) decoder =
   eat_Os decoder;
   let rec loop () = match Jsonm.decode decoder with
     | `Lexeme (`Name "proofs") -> parse_theories ~file visit decoder
@@ -215,6 +190,27 @@ let parse_json ~file visit decoder =
     | `Lexeme `Oe -> () (* no proofs found *)
     | e -> throw e decoder in
   loop ()
+
+let parse_json_list ~file decoder =
+  let theories = ref [] in
+  let visit theory = theories := theory :: !theories in
+  parse_json ~file visit decoder;
+  !theories
+
+let read_proof_json source : theory list =
+  let file, source = match source with
+    | File file -> file, `Channel (open_in file)
+    | String (file, contents) -> file, `String contents
+  in
+  let decoder = Jsonm.decoder source in
+  parse_json_list ~file decoder
+
+let read_proof_json_string ~file s : theory list =
+  let decoder = Jsonm.decoder (`String s) in
+  parse_json_list ~file decoder
+
+let iter_full_goals (f : Position.t -> full_goal -> unit) (t : theory) : unit =
+  List.iter (fun (goal, position) -> f position { t with goal_info = goal }) t.goal_info
 
 let get_env () =
   let config = Config.load_config "." in
@@ -235,18 +231,18 @@ let rec path_goal (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_pa
     let+ g = List.nth_opt gs i in
     path_goal e g q
 
-let get_goal (q : ProofPath.t) : string option =
+let get_goal (q : full_goal) : string option =
   try
     let session = true in
     let env = get_env () in
     let file = q.file in
-    let dir, lib = Wutil.filepath file in
+    let dir, _lib = Wutil.filepath file in
     let theories, format = Wutil.load_theories env.Config.wenv file in
     let s = Why3find.Session.create ~session ~dir ~file ~format theories in
     let (let+) = Option.bind in
     let+ theory = List.find_opt (fun t -> Session.name t = q.theory) (Session.theories s) in
-    let+ goal = List.find_opt (fun g -> Session.goal_name g = q.vc) (Session.split theory) in
-    let+ goal = path_goal env.wenv goal q.tactics in
+    let+ goal = List.find_opt (fun g -> Session.goal_name g = q.goal_info.vc) (Session.split theory) in
+    let+ goal = path_goal env.wenv goal q.goal_info.tactics in
     let task = Session.goal_task goal in
     Some (Format.asprintf "%a" Why3.Pretty.print_sequent task)
   with e -> Debug.debug ("Failed to load why3: " ^ Printexc.to_string e); None

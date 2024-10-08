@@ -90,7 +90,7 @@ class lsp_server =
               let global_coma = root / "target" / (crate ^ "-lib.coma") in
               let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
               if Creusot_manager.coma_file ~uri:(DocumentUri.of_path global_coma) global_coma then (
-                Creusot_manager.proof_json global_proof;
+                Creusot_manager.add_proof_json (File global_proof);
                 add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
                 add_revdeps (DocumentUri.of_path global_proof) AllRsFiles
               );
@@ -132,7 +132,7 @@ class lsp_server =
           if base = "why3session.xml" then
             Creusot_lsp.Why3session.process_why3session_path path
           else if base = "proof.json" then
-            Creusot_manager.proof_json path
+            Creusot_manager.add_proof_json (File path)
           else if Filename.check_suffix base ".coma" then
             ignore (Creusot_manager.coma_file ~uri:change.uri path);
           self#refresh_all ~notify_back change.uri
@@ -218,7 +218,7 @@ class lsp_server =
             ~command:(Command.create
               ~title:"Show context"
               ~command:"creusot.showTask"
-              ~arguments:[Why3findUtil.ProofPath.to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_red_black_tree__qyi10312951825188598006"; vc = "resolve_coherence_refn"; tactics = [] })]
+              ~arguments:[Why3findUtil.ProofPath.full_goal_to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_red_black_tree__qyi10312951825188598006"; goal_info = { vc = "resolve_coherence_refn"; tactics = [] }})]
               ())
             ~range:{ start = zero; end_ = zero }
             ()
@@ -245,7 +245,7 @@ class lsp_server =
         | Some req ->
           let arg = Jsonrpc.Structured.yojson_of_t req in
           let* _ = log_info notify_back (Yojson.Safe.to_string arg) in
-          match Why3findUtil.ProofPath.of_json arg with
+          match Why3findUtil.ProofPath.full_goal_of_json arg with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
             let goal = Why3findUtil.get_goal path in

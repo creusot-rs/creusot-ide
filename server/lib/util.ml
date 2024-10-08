@@ -1,5 +1,9 @@
 open Lsp.Types
 
+type source =
+  | File of (* file name *) string
+  | String of (* file name *) string * string
+
 module Lex = struct
   (* When we just started a new line *)
   let new_line lexbuf =
@@ -46,4 +50,8 @@ module Async = struct
         | Async t -> Some (fun (k : (a, _) continuation) -> Lwt.bind t (continue k))
         | _ -> None)
     }
+end
+
+module Located = struct
+  type 'a t = { value: 'a; location: Location.t }
 end
