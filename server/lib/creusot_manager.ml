@@ -1,8 +1,10 @@
 open Lsp.Types
 open Hacky_coma_parser
 open Why3findUtil
+open Util
 
 let theory_map : (string, ProofPath.theory) Hashtbl.t = Hashtbl.create 32
+let proof_json_map : (string, ProofPath.theory list) Hashtbl.t = Hashtbl.create 16
 
 let orphans : (string, unit) Hashtbl.t = Hashtbl.create 32
 let declare_orphan path = Hashtbl.replace orphans path ()
@@ -388,10 +390,37 @@ let get_rust_diagnostics uri =
 
 let add_proof_json src =
   try
-    let theories = read_proof_json src in
+    let file = file_of_source src in
+    let coma = Filename.dirname file ^ ".coma" in
+    let theories = read_proof_json ~coma src in
     theories |> List.iter (fun theory ->
-      Hashtbl.replace theory_map theory.ProofPath.theory theory)
+      Hashtbl.replace theory_map theory.ProofPath.theory theory);
+    Hashtbl.replace proof_json_map (file_of_source src) theories
   with
   | e ->
     let file = match src with File file | String (file, _) -> file in
     Debug.debug (Printf.sprintf "Failed to read %s: %s" file (Printexc.to_string e))
+
+let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt proof_json_map file with
+  | None -> Debug.debug (Printf.sprintf "hints: %s not found" file); []
+  | Some theories ->
+    let open ProofPath in
+    let hints = ref [] in
+    let add_hint l = hints := l :: !hints in
+    theories |> List.iter (fun theory ->
+      theory.goal_info |> List.iter (fun (goal, range) ->
+        let full_goal = { theory with goal_info = goal } in
+        let command = Command.create
+          ~title:"Show proof context"
+          ~command:"creusot.showTask"
+          ~arguments:[full_goal_to_json full_goal]
+          () in
+        let value = string_of_goal goal in
+        let label = InlayHintLabelPart.create ~command ~value () in
+        let sep = InlayHintLabelPart.create ~value:":" () in
+        let label = `List [label; sep] in
+        let position = range.Range.start in
+        add_hint (InlayHint.create ~label ~position ())
+        )
+      );
+    !hints

@@ -168,6 +168,10 @@ class lsp_server =
         | Some (Some "coma") -> true
         | _ -> false
       in
+      let proof_json () = match languageId with
+        | Some (Some "why3proof") -> true
+        | _ -> false
+      in
       if rusty then (
         let base = Filename.chop_suffix path ".rs" in
         let coma = base ^ ".coma" in
@@ -182,6 +186,8 @@ class lsp_server =
         Creusot_manager.rust_file_as_string ~path content
       ) else if coma () then (
         ignore (Creusot_manager.coma_file ~uri path)
+      ) else if proof_json () then (
+        Creusot_manager.add_proof_json (String (path, content))
       )
 
     (* We now override the [on_notify_doc_did_open] method that will be called
@@ -211,21 +217,18 @@ class lsp_server =
       Debug.debug_handler (log_info notify_back) @@ fun () ->
         if Filename.check_suffix path ".rs" then
           Creusot_manager.get_rust_lenses uri
-        else if Filename.basename path = "proof.json" then
-          let coma = Filename.dirname path ^ ".coma" in
-          let zero = Position.create ~line:0 ~character:0 in
-          [CodeLens.create
-            ~command:(Command.create
-              ~title:"Show context"
-              ~command:"creusot.showTask"
-              ~arguments:[Why3findUtil.ProofPath.full_goal_to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_red_black_tree__qyi10312951825188598006"; goal_info = { vc = "resolve_coherence_refn"; tactics = [] }})]
-              ())
-            ~range:{ start = zero; end_ = zero }
-            ()
-          ]
         else if Filename.check_suffix path ".coma" then
             Creusot_manager.get_coma_lenses uri
         else []
+
+    method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
+
+    method! on_req_inlay_hint ~notify_back ~id:_ ~uri ~range:_ () =
+      let path = DocumentUri.to_path uri in
+      if Filename.basename path = "proof.json" then
+        let hints = Creusot_manager.get_proof_json_inlay_hints path in
+        return (Some hints)
+      else return None
 
     method! on_request_unhandled (type a) ~notify_back ~id (r : a Lsp.Client_request.t) : a t =
       match r with
@@ -244,11 +247,11 @@ class lsp_server =
         | None -> Lwt.return `Null (* error *)
         | Some req ->
           let arg = Jsonrpc.Structured.yojson_of_t req in
-          let* _ = log_info notify_back (Yojson.Safe.to_string arg) in
           match Why3findUtil.ProofPath.full_goal_of_json arg with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
-            let goal = Why3findUtil.get_goal path in
+            let goal =
+              Debug.debug_stderr @@ fun () -> Why3findUtil.get_goal path in
             let msg = match goal with
             | None -> "No goal found"
             | Some goal -> goal in

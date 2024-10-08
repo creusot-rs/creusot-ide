@@ -22,13 +22,14 @@ module ProofPath : sig
   val pp_theory : Format.formatter -> theory -> unit
   val pp_goal : Format.formatter -> goal -> unit
   val string_of_goal : goal -> string
+  val string_of_full_goal : full_goal -> string
   val full_goal_to_json : full_goal -> Yojson.Safe.t
   val full_goal_of_json : Yojson.Safe.t -> full_goal option
 end
 
 open ProofPath
 
-val parse_json : file:string -> (theory -> unit) -> Jsonm.decoder -> unit
-val read_proof_json : source -> theory list
+val parse_json : coma:string -> (theory -> unit) -> Jsonm.decoder -> unit
+val read_proof_json : coma:string -> source -> theory list
 
 val get_goal : ProofPath.full_goal -> string option

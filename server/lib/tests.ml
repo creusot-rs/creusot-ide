@@ -39,8 +39,10 @@ let%expect_test _ =
 let%expect_test _ =
   let open Why3findUtil in
   let open ProofPath in
-  let json = {json|{"proofs": {"theory1": {"vc1": {"tactic": "split_vc", "children":[null]}}}}|json} in
-  let theories = read_proof_json (String ("a.coma", json)) in
+  let json = {json|
+    { "profile": {"prover": "z3", "size": 33, "time": 0.5},
+      "proofs": {"theory1": {"vc1": {"tactic": "split_vc", "children":[null]}}}}|json} in
+  let theories = read_proof_json ~coma:"a.coma" (String ("proof.json", json)) in
   theories |> List.iter (fun theory ->
     Printf.printf "%s:%s\n" theory.file theory.theory;
     theory.goal_info |> List.iter (fun (goal, _) -> Format.printf "  %a\n" pp_goal goal));
