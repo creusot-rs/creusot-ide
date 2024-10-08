@@ -136,6 +136,7 @@ export function activate(context: ExtensionContext) {
         why3DocProvider.newText(msg);
         why3DocProvider.onDidChangeEmitter.fire(uri);
         const doc = await vscode.workspace.openTextDocument(uri);
+        vscode.languages.setTextDocumentLanguage(doc, "coma");
         await vscode.window.showTextDocument(doc, { preview: false });
     });
 }
