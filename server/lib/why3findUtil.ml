@@ -215,7 +215,7 @@ let read_proof_json ~coma source : theory list =
   let decoder = Jsonm.decoder source in
   parse_json_list ~coma decoder
 
-let get_env () =
+let env_ = lazy (
   let config = Config.load_config "." in
   (match config.packages with
   | [] -> Printf.eprintf "Warning: no package found in config \"why3find.json\", at least prelude is needed for creusot proofs\n"
@@ -225,7 +225,9 @@ let get_env () =
   List.iter (fun unwarn ->
     Why3.Loc.disable_warning @@ Why3.Loc.register_warning unwarn Why3.Pp.empty_formatted)
     ("unused_variable" :: "axiom_abstract" :: config.warnoff);
-  env
+  env)
+
+let get_env () = Lazy.force env_
 
 let rec path_goal_ theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_path) breadcrumbs : Session.goal option =
   match q with
@@ -258,7 +260,7 @@ open Why3
         let tmap,format = Why3.Env.(read_file base_language env file) in
         Some (Wstdlib.Mstr.bindings tmap |> List.map snd |> List.sort byloc , format)
       with error ->
-        Printf.eprintf "%s\n" (Printexc.to_string error) ;
+        Printf.eprintf "%s\n%!" (Printexc.to_string error) ;
         None
       end
 
