@@ -23,7 +23,6 @@
 (ocamllex
  hacky_coma_parser
  hacky_rs_parser
- json_visitor
  creusot_demangler)
 (menhir
  (modules rust_parser))
