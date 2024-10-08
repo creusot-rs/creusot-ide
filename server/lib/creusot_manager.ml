@@ -1,5 +1,10 @@
 open Lsp.Types
 open Hacky_coma_parser
+open Why3findUtil
+open Util
+
+let theory_map : (string, ProofPath.theory) Hashtbl.t = Hashtbl.create 32
+let proof_json_map : (string, ProofPath.theory list) Hashtbl.t = Hashtbl.create 16
 
 let orphans : (string, unit) Hashtbl.t = Hashtbl.create 32
 let declare_orphan path = Hashtbl.replace orphans path ()
@@ -117,8 +122,6 @@ module ComaInfo = struct
   let coma_files : (DocumentUri.t, coma_file) Hashtbl.t = Hashtbl.create 16
   let add_file = Hashtbl.replace coma_files
   let lookup_file = Hashtbl.find_opt coma_files
-
-  type t = coma_file
 end
 
 let coma_lexbuf ~uri lexbuf =
@@ -234,9 +237,10 @@ module RustInfo = struct
     | Qed
     | ToProve of (string * Location.t) array
   type item = {
-      range: Range.t;
-      to_coma: Location.t;
-      status: status;
+    name: string; (* for debugging *)
+    range: Range.t;
+    to_coma: Location.t;
+    status: status;
   }
   type orphan_item = {
     orphan_name: string;
@@ -250,20 +254,17 @@ module RustInfo = struct
   let empty = { inline_items = []; orphans = [] }
 end
 
-let status_of_thy thy =
-  let open Types in
+let status_of_thy theory =
+  let open ProofPath in
   let open RustInfo in
-  match thy.unproved_goals with
-  | Types.Unknown -> Unknown
-  | Types.Unproved goals when Array.length goals = 0 -> Qed
-  | Types.Unproved goals ->
-    let dummy_position = Position.create ~line:0 ~character:0 in
-    let dummy_range = Range.create ~start:dummy_position ~end_:dummy_position in
-    let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
-    ToProve (Array.map from_goal goals)
+  match theory.goal_info with
+  | [] -> Qed
+  | (_ :: _) as goals ->
+    let from_goal (goal, range) = (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path theory.file) ~range) in
+    ToProve (Array.of_list (List.map from_goal goals))
 
-let get_status ident = match Why3session.get_theory ident with
-  | None -> RustInfo.Unknown
+let get_status ident = match Hashtbl.find_opt theory_map ident with
+  | None -> Debug.debug ("No proofs found for " ^ ident); RustInfo.Unknown
   | Some thy -> status_of_thy thy
 
 let find_orphan_goals ~package modname visited =
@@ -294,11 +295,12 @@ let get_rust_info ~package ~path : RustInfo.t =
           | None -> Other doc.module_ :: def_path
           | Some package -> Other package :: Other doc.module_ :: def_path
         in
+        let name = string_of_def_path dpath in
         let+ loc_ident = lookup_def_path dpath in
         let status = get_status loc_ident.ident in
         let to_coma = loc_ident.loc in
         Hashtbl.replace visited loc_ident.ident ();
-        Some RustInfo.{ range; to_coma; status }
+        Some RustInfo.{ name; range; to_coma; status }
     in
     let orphans = find_orphan_goals ~package doc.module_ (Hashtbl.mem visited) in
     RustInfo.{
@@ -386,10 +388,39 @@ let get_rust_diagnostics uri =
   let info = get_rust_info ~package:(crate_of path) ~path in
   info.inline_items |> List.concat_map to_lsp_diagnostics
 
-let proof_json path =
+let add_proof_json src =
   try
-    Why3findUtil.read_proof_json ~fname:path
-      |> List.iter (fun (name, thy) -> Why3session.add_thy name thy)
+    let file = file_of_source src in
+    let coma = Filename.dirname file ^ ".coma" in
+    let theories = read_proof_json ~coma src in
+    theories |> List.iter (fun theory ->
+      Hashtbl.replace theory_map theory.ProofPath.theory theory);
+    Hashtbl.replace proof_json_map (file_of_source src) theories
   with
-  | Sys_error _ -> ()
-  | e -> Debug.debug (Printexc.to_string e)
+  | e ->
+    let file = match src with File file | String (file, _) -> file in
+    Debug.debug (Printf.sprintf "Failed to read %s: %s" file (Printexc.to_string e))
+
+let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt proof_json_map file with
+  | None -> Debug.debug (Printf.sprintf "hints: %s not found" file); []
+  | Some theories ->
+    let open ProofPath in
+    let hints = ref [] in
+    let add_hint l = hints := l :: !hints in
+    theories |> List.iter (fun theory ->
+      theory.goal_info |> List.iter (fun (goal, range) ->
+        let full_goal = { theory with goal_info = goal } in
+        let command = Command.create
+          ~title:"Show proof context"
+          ~command:"creusot.showTask"
+          ~arguments:[full_goal_to_json full_goal]
+          () in
+        let value = string_of_goal goal in
+        let label = InlayHintLabelPart.create ~command ~value () in
+        let sep = InlayHintLabelPart.create ~value:":" () in
+        let label = `List [label; sep] in
+        let position = range.Range.start in
+        add_hint (InlayHint.create ~label ~position ())
+        )
+      );
+    !hints

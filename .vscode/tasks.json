@@ -13,7 +13,10 @@
             "problemMatcher": [
                 "$ocamlc"
             ],
-            "group": "build"
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
         },
         {
             "label": "Clean Ocaml Artifacts",
@@ -52,6 +55,6 @@
                 "$tsc"
             ],
             "group": "build"
-        },
+        }
     ]
 }

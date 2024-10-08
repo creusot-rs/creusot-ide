@@ -1,22 +1,35 @@
 open Lsp.Types
 open Types
-
-val read_proof_json : fname:string -> (string * theory_info) list
-(** Read from a file *)
-
-val parse_proof_json : fname:string -> string -> (string * theory_info) list
-(** Read from a string (use fname for error reporting) *)
+open Util
 
 module ProofPath : sig
+  type lazy_tactic_path = (string option ref * int) list  (* tactic names might not have been resolved yet *)
   type tactic_path = (string * int) list  (* tactic * goalindex *)
-  type t = {
-    file: string;
-    theory: string;
+  type 'a _goal = {
     vc: string;
-    tactics: tactic_path;
+    tactics: 'a;
+    }
+  type goal = tactic_path _goal
+  type lazy_goal = lazy_tactic_path _goal
+  type 'a with_theory = {
+    file: string;  (* The source coma file *)
+    theory: string;
+    goal_info: 'a;
   }
-  val to_json : t -> Yojson.Safe.t
-  val of_json : Yojson.Safe.t -> t option
+  type theory = (goal * Range.t) list with_theory
+  type full_goal = goal with_theory
+
+  val pp_theory : Format.formatter -> theory -> unit
+  val pp_goal : Format.formatter -> goal -> unit
+  val string_of_goal : goal -> string
+  val string_of_full_goal : full_goal -> string
+  val full_goal_to_json : full_goal -> Yojson.Safe.t
+  val full_goal_of_json : Yojson.Safe.t -> full_goal option
 end
 
-val get_goal : ProofPath.t -> string option
+open ProofPath
+
+val parse_json : coma:string -> (theory -> unit) -> Jsonm.decoder -> unit
+val read_proof_json : coma:string -> source -> theory list
+
+val get_goal : ProofPath.full_goal -> string option

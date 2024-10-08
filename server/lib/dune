@@ -12,6 +12,7 @@
   uri
   toml
   yojson
+  jsonm
   lwt.unix
   ppx_deriving
   xmlm)

@@ -1,5 +1,12 @@
 open Lsp.Types
 
+type source =
+  | File of (* file name *) string
+  | String of (* file name *) string * string
+
+let file_of_source = function
+  | File file | String (file, _) -> file
+
 module Lex = struct
   (* When we just started a new line *)
   let new_line lexbuf =

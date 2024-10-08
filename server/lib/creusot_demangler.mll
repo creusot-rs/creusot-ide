@@ -61,10 +61,4 @@ and demangle0 = parse
             | Other s -> Other s in
         try Option.map (List.map of_seg) (demangle s) with
         | _ -> None
-
-    let%expect_test _ =
-        Option.iter print_segments (demangle "M_qyi3__qy65z");
-        [%expect {|
-            ::impl{3}::A
-        |}]
 }

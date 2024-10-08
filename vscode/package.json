@@ -14,7 +14,6 @@
   "icon": "./logo.jpeg",
   "activationEvents": [
     "onLanguage:rust",
-    "onLanguage:coma",
     "onLanguage:why3session",
     "onLanguage:why3proof"
   ],

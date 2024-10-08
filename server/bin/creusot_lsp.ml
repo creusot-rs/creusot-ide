@@ -90,7 +90,7 @@ class lsp_server =
               let global_coma = root / "target" / (crate ^ "-lib.coma") in
               let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
               if Creusot_manager.coma_file ~uri:(DocumentUri.of_path global_coma) global_coma then (
-                Creusot_manager.proof_json global_proof;
+                Creusot_manager.add_proof_json (File global_proof);
                 add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
                 add_revdeps (DocumentUri.of_path global_proof) AllRsFiles
               );
@@ -130,9 +130,9 @@ class lsp_server =
           let path = DocumentUri.to_path change.uri in
           let base = Filename.basename path in
           if base = "why3session.xml" then
-            Creusot_lsp.Why3session.process_why3session_path path
+            () (* Creusot_lsp.Why3session.process_why3session_path path *)
           else if base = "proof.json" then
-            Creusot_manager.proof_json path
+            Creusot_manager.add_proof_json (File path)
           else if Filename.check_suffix base ".coma" then
             ignore (Creusot_manager.coma_file ~uri:change.uri path);
           self#refresh_all ~notify_back change.uri
@@ -168,20 +168,26 @@ class lsp_server =
         | Some (Some "coma") -> true
         | _ -> false
       in
+      let proof_json () = match languageId with
+        | Some (Some "why3proof") -> true
+        | _ -> false
+      in
       if rusty then (
         let base = Filename.chop_suffix path ".rs" in
         let coma = base ^ ".coma" in
-        let why3session = Filename.concat base "why3session.xml" in
+        let proof = Filename.concat base "proof.json" in
         (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
         if Creusot_manager.coma_file ~uri:(DocumentUri.of_path coma) coma then (
           Creusot_manager.declare_orphan path;
-          Creusot_lsp.Why3session.process_why3session_path why3session;
+          Creusot_manager.add_proof_json (File proof);
           add_revdeps (DocumentUri.of_path coma) (OneFile uri);
-          add_revdeps (DocumentUri.of_path why3session) (OneFile uri);
+          add_revdeps (DocumentUri.of_path proof) (OneFile uri);
         );
         Creusot_manager.rust_file_as_string ~path content
       ) else if coma () then (
         ignore (Creusot_manager.coma_file ~uri path)
+      ) else if proof_json () then (
+        Creusot_manager.add_proof_json (String (path, content))
       )
 
     (* We now override the [on_notify_doc_did_open] method that will be called
@@ -211,21 +217,18 @@ class lsp_server =
       Debug.debug_handler (log_info notify_back) @@ fun () ->
         if Filename.check_suffix path ".rs" then
           Creusot_manager.get_rust_lenses uri
-        else if Filename.basename path = "proof.json" then
-          let coma = Filename.dirname path ^ ".coma" in
-          let zero = Position.create ~line:0 ~character:0 in
-          [CodeLens.create
-            ~command:(Command.create
-              ~title:"Show context"
-              ~command:"creusot.showTask"
-              ~arguments:[Why3findUtil.ProofPath.to_json Why3findUtil.ProofPath.({ file = coma; theory = "M_tuto__z2_linear_search__search"; vc = "vc_search"; tactics = [] })]
-              ())
-            ~range:{ start = zero; end_ = zero }
-            ()
-          ]
         else if Filename.check_suffix path ".coma" then
             Creusot_manager.get_coma_lenses uri
         else []
+
+    method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
+
+    method! on_req_inlay_hint ~notify_back ~id:_ ~uri ~range:_ () =
+      let path = DocumentUri.to_path uri in
+      if Filename.basename path = "proof.json" then
+        let hints = Creusot_manager.get_proof_json_inlay_hints path in
+        return (Some hints)
+      else return None
 
     method! on_request_unhandled (type a) ~notify_back ~id (r : a Lsp.Client_request.t) : a t =
       match r with
@@ -244,11 +247,11 @@ class lsp_server =
         | None -> Lwt.return `Null (* error *)
         | Some req ->
           let arg = Jsonrpc.Structured.yojson_of_t req in
-          let* _ = log_info notify_back (Yojson.Safe.to_string arg) in
-          match Why3findUtil.ProofPath.of_json arg with
+          match Why3findUtil.ProofPath.full_goal_of_json arg with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
-            let goal = Why3findUtil.get_goal path in
+            let goal =
+              Debug.debug_stderr @@ fun () -> Why3findUtil.get_goal path in
             let msg = match goal with
             | None -> "No goal found"
             | Some goal -> goal in

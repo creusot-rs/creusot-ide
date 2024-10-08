@@ -1,4 +1,5 @@
 open Lsp.Types
+open Util
 
 val lookup_demangle : string -> Rust_syntax.def_path option
 
@@ -33,6 +34,7 @@ module RustInfo : sig
         | Qed
         | ToProve of (string * Location.t) array
     type item = {
+        name: string;
         range: Range.t;
         to_coma: Location.t;
         status: status;
@@ -52,7 +54,8 @@ val get_rust_info : package:string option -> path:string -> RustInfo.t
 val get_rust_lenses : DocumentUri.t -> CodeLens.t list
 val get_rust_diagnostics : DocumentUri.t -> Diagnostic.t list
 
-val proof_json : string -> unit
+val add_proof_json : source -> unit
+val get_proof_json_inlay_hints : string -> InlayHint.t list
 
 val declare_orphan : string -> unit
 (** Rust files that don't have a crate *)

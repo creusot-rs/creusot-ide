@@ -1,7 +1,7 @@
-(lang dune 2.7)
+(lang dune 3.13)
 (name creusot-lsp)
 (version dev)
-(using menhir 2.1)
+(using menhir 3.0)
 
 (package
  (name "creusot-lsp")
@@ -15,6 +15,8 @@
   "linol-lwt"
   "toml"
   "xmlm"
-  "uri")
+  "uri"
+  "yojson"
+  "jsonm")
  (authors "Li-yao Xia"))
 (generate_opam_files true)
