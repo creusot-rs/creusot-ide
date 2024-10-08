@@ -21,6 +21,7 @@ module ProofPath : sig
 
   val pp_theory : Format.formatter -> theory -> unit
   val pp_goal : Format.formatter -> goal -> unit
+  val string_of_goal : goal -> string
   val full_goal_to_json : full_goal -> Yojson.Safe.t
   val full_goal_of_json : Yojson.Safe.t -> full_goal option
 end

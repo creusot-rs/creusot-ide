@@ -35,6 +35,8 @@ module ProofPath = struct
 
   let pp_theory h t = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goals t.goal_info
 
+  let string_of_goal = Format.asprintf "%a" pp_goal
+
   let tactic_path_to_json (p : tactic_path) : Yojson.Safe.t =
     `List (List.map (fun (tactic, i) -> `List [`String tactic; `Int i]) p)
 
@@ -111,7 +113,7 @@ let rec parse_proofs_body ~file visit decoder tactic_path =
       let rec loop_children i = match parse_proofs ~file visit decoder ((tactic, i) :: tactic_path) with
         | TrailingAe -> ()
         | NoAe -> loop_children (i + 1)
-        in loop_children 0
+      in loop_children 0; loop ()
     | `Lexeme (`Name ("prover" | "time" | "size")) ->
       (* eat strings and numbers *)
       (match Jsonm.decode decoder with
@@ -142,8 +144,7 @@ let parse_theory ~file visit decoder =
       | NoAe -> loop ())
     | `Lexeme `Oe -> ()
     | e -> throw e decoder
-    in
-  loop ();
+  in loop ();
   (* After traversing the vc the tactic names should be known *)
   let force_goal ({ vc; tactics }, position) =
     { vc; tactics = force_tactic_path tactics }, position in
@@ -158,7 +159,7 @@ let parse_theories ~file (visit : theory -> unit) decoder =
       loop ()
     | `Lexeme `Oe -> ()
     | e -> throw e decoder
-    in loop ()
+  in loop ()
 
 let rec skip_json_ decoder : [`Ae] option = match Jsonm.decode decoder with
     | `Lexeme `As ->
@@ -170,7 +171,7 @@ let rec skip_json_ decoder : [`Ae] option = match Jsonm.decode decoder with
       let rec skip_members () =
         match Jsonm.decode decoder with
         | `Lexeme `Oe -> ()
-        | `Lexeme (`Name _) -> skip_json decoder
+        | `Lexeme (`Name _) -> skip_json decoder; skip_members ()
         | e -> throw e decoder
       in skip_members (); None
     | `Lexeme (`Null | `String _ | `Float _ | `Bool _) -> None
