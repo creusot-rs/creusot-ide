@@ -1,5 +1,8 @@
 open Lsp.Types
 open Hacky_coma_parser
+open Why3findUtil
+
+let theory_map : (string, ProofPath.theory) Hashtbl.t = Hashtbl.create 32
 
 let orphans : (string, unit) Hashtbl.t = Hashtbl.create 32
 let declare_orphan path = Hashtbl.replace orphans path ()
@@ -117,8 +120,6 @@ module ComaInfo = struct
   let coma_files : (DocumentUri.t, coma_file) Hashtbl.t = Hashtbl.create 16
   let add_file = Hashtbl.replace coma_files
   let lookup_file = Hashtbl.find_opt coma_files
-
-  type t = coma_file
 end
 
 let coma_lexbuf ~uri lexbuf =
@@ -251,20 +252,17 @@ module RustInfo = struct
   let empty = { inline_items = []; orphans = [] }
 end
 
-let status_of_thy thy =
-  let open Types in
+let status_of_thy theory =
+  let open ProofPath in
   let open RustInfo in
-  match thy.unproved_goals with
-  | Types.Unknown -> Unknown
-  | Types.Unproved goals when Array.length goals = 0 -> Qed
-  | Types.Unproved goals ->
-    let dummy_position = Position.create ~line:0 ~character:0 in
-    let dummy_range = Range.create ~start:dummy_position ~end_:dummy_position in
-    let from_goal goal = (goal.goal_name, Location.create ~uri:(DocumentUri.of_path thy.path) ~range:dummy_range) in
-    ToProve (Array.map from_goal goals)
+  match theory.goal_info with
+  | [] -> Qed
+  | (_ :: _) as goals ->
+    let from_goal (goal, range) = (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path theory.file) ~range) in
+    ToProve (Array.of_list (List.map from_goal goals))
 
-let get_status ident = match Why3session.get_theory ident with
-  | None -> RustInfo.Unknown
+let get_status ident = match Hashtbl.find_opt theory_map ident with
+  | None -> Debug.debug ("No proofs found for " ^ ident); RustInfo.Unknown
   | Some thy -> status_of_thy thy
 
 let find_orphan_goals ~package modname visited =
@@ -388,11 +386,12 @@ let get_rust_diagnostics uri =
   let info = get_rust_info ~package:(crate_of path) ~path in
   info.inline_items |> List.concat_map to_lsp_diagnostics
 
-open Why3findUtil
-
-let theory_map : (string, ProofPath.theory) Hashtbl.t = Hashtbl.create 32
-
 let add_proof_json src =
-  let theories = read_proof_json src in
-  theories |> List.iter (fun theory ->
-    Hashtbl.replace theory_map theory.ProofPath.theory theory)
+  try
+    let theories = read_proof_json src in
+    theories |> List.iter (fun theory ->
+      Hashtbl.replace theory_map theory.ProofPath.theory theory)
+  with
+  | e ->
+    let file = match src with File file | String (file, _) -> file in
+    Debug.debug (Printf.sprintf "Failed to read %s: %s" file (Printexc.to_string e))

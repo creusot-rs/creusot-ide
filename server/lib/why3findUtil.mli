@@ -16,7 +16,7 @@ module ProofPath : sig
     theory: string;
     goal_info: 'a;
   }
-  type theory = (goal * Position.t) list with_theory
+  type theory = (goal * Range.t) list with_theory
   type full_goal = goal with_theory
 
   val pp_theory : Format.formatter -> theory -> unit

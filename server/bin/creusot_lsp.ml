@@ -130,7 +130,7 @@ class lsp_server =
           let path = DocumentUri.to_path change.uri in
           let base = Filename.basename path in
           if base = "why3session.xml" then
-            Creusot_lsp.Why3session.process_why3session_path path
+            () (* Creusot_lsp.Why3session.process_why3session_path path *)
           else if base = "proof.json" then
             Creusot_manager.add_proof_json (File path)
           else if Filename.check_suffix base ".coma" then
@@ -171,13 +171,13 @@ class lsp_server =
       if rusty then (
         let base = Filename.chop_suffix path ".rs" in
         let coma = base ^ ".coma" in
-        let why3session = Filename.concat base "why3session.xml" in
+        let proof = Filename.concat base "proof.json" in
         (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
         if Creusot_manager.coma_file ~uri:(DocumentUri.of_path coma) coma then (
           Creusot_manager.declare_orphan path;
-          Creusot_lsp.Why3session.process_why3session_path why3session;
+          Creusot_manager.add_proof_json (File proof);
           add_revdeps (DocumentUri.of_path coma) (OneFile uri);
-          add_revdeps (DocumentUri.of_path why3session) (OneFile uri);
+          add_revdeps (DocumentUri.of_path proof) (OneFile uri);
         );
         Creusot_manager.rust_file_as_string ~path content
       ) else if coma () then (
