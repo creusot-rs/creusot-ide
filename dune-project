@@ -18,5 +18,7 @@
   "uri"
   "yojson"
   "jsonm")
- (authors "Li-yao Xia"))
+ (authors "Li-yao Xia")
+ (maintainers "Li-yao Xia <lysxia@gmail.com>")
+ (homepage "https://github.com/creusot-rs/creusot-ide"))
 (generate_opam_files true)

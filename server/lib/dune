@@ -20,9 +20,8 @@
  (preprocess
   (pps ppx_deriving.show ppx_expect))
  (modules_without_implementation types))
-(ocamllex
- hacky_coma_parser
- hacky_rs_parser
- creusot_demangler)
+
+(ocamllex hacky_coma_parser hacky_rs_parser creusot_demangler)
+
 (menhir
  (modules rust_parser))
