@@ -247,7 +247,7 @@ class lsp_server =
         | None -> Lwt.return `Null (* error *)
         | Some req ->
           let arg = Jsonrpc.Structured.yojson_of_t req in
-          match Why3findUtil.ProofPath.full_goal_of_json arg with
+          match Why3findUtil.ProofPath.qualified_goal_of_json arg with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
             let goal =

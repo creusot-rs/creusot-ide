@@ -419,11 +419,11 @@ let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt 
     let add_hint l = hints := l :: !hints in
     theories |> List.iter (fun theory ->
       theory.goal_info |> List.iter (fun (goal, range) ->
-        let full_goal = { theory with goal_info = goal } in
+        let qualified_goal = { theory with goal_info = goal } in
         let command = Command.create
           ~title:"Show proof context"
           ~command:"creusot.showTask"
-          ~arguments:[full_goal_to_json full_goal]
+          ~arguments:[qualified_goal_to_json qualified_goal]
           () in
         let value = string_of_goal goal in
         let label = InlayHintLabelPart.create ~command ~value () in

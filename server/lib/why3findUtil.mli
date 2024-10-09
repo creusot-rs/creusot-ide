@@ -17,14 +17,14 @@ module ProofPath : sig
     goal_info: 'a;
   }
   type theory = (goal * Range.t) list with_theory
-  type full_goal = goal with_theory
+  type qualified_goal = goal with_theory
 
   val pp_theory : Format.formatter -> theory -> unit
   val pp_goal : Format.formatter -> goal -> unit
   val string_of_goal : goal -> string
-  val string_of_full_goal : full_goal -> string
-  val full_goal_to_json : full_goal -> Yojson.Safe.t
-  val full_goal_of_json : Yojson.Safe.t -> full_goal option
+  val string_of_qualified_goal : qualified_goal -> string
+  val qualified_goal_to_json : qualified_goal -> Yojson.Safe.t
+  val qualified_goal_of_json : Yojson.Safe.t -> qualified_goal option
 end
 
 open ProofPath
@@ -32,4 +32,4 @@ open ProofPath
 val parse_json : coma:string -> (theory -> unit) -> Jsonm.decoder -> unit
 val read_proof_json : coma:string -> source -> theory list
 
-val get_goal : ProofPath.full_goal -> string option
+val get_goal : ProofPath.qualified_goal -> string option

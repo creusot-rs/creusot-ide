@@ -17,7 +17,7 @@ module ProofPath = struct
     goal_info: 'a;
   }
   type theory = (goal * Range.t) list with_theory
-  type full_goal = goal with_theory
+  type qualified_goal = goal with_theory
 
   let force_tactic_path : lazy_tactic_path -> tactic_path =
     List.map @@ fun (tac, i) -> (match !tac with None -> "_" | Some tac -> tac), i
@@ -36,16 +36,16 @@ module ProofPath = struct
 
   let pp_theory h t = Format.fprintf h "%s:%s:@[%a@]" t.file t.theory pp_goals t.goal_info
 
-  let pp_full_goal h t = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goal t.goal_info
+  let pp_qualified_goal h t = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goal t.goal_info
 
   let string_of_goal = Format.asprintf "%a" pp_goal
 
-  let string_of_full_goal = Format.asprintf "%a" pp_full_goal
+  let string_of_qualified_goal = Format.asprintf "%a" pp_qualified_goal
 
   let tactic_path_to_json (p : tactic_path) : Yojson.Safe.t =
     `List (List.map (fun (tactic, i) -> `List [`String tactic; `Int i]) p)
 
-  let full_goal_to_json (p : full_goal) : Yojson.Safe.t =
+  let qualified_goal_to_json (p : qualified_goal) : Yojson.Safe.t =
     `Assoc [
       "file", `String p.file;
       "theory", `String p.theory;
@@ -66,7 +66,7 @@ module ProofPath = struct
       | _ -> None) l
     | _ -> None
 
-  let full_goal_of_json (j : Yojson.Safe.t) : full_goal option =
+  let qualified_goal_of_json (j : Yojson.Safe.t) : qualified_goal option =
     let (let+) = Option.bind in
     let open Yojson.Safe.Util in
     match j with
@@ -270,7 +270,7 @@ open Why3
         None
       end
 
-let get_goal (q : full_goal) : string option =
+let get_goal (q : qualified_goal) : string option =
   try
     let session = true in
     let env = get_env () in
