@@ -31,11 +31,23 @@ let%expect_test _ =
   let open ProofPath in
   let json = {json|
     { "profile": {"prover": "z3", "size": 33, "time": 0.5},
-      "proofs": {"theory1": {"vc1": {"tactic": "split_vc", "children":[null]}}}}|json} in
+      "proofs": {
+        "theory1": {"vc1": {"tactic": "split_vc", "children":[null]}},
+        "theory2": {"vc2": {"tactic": "split_vc", "children":[
+          {"tactic": "split_vc", "children": [
+            {"prover": "z3", "time": 0.5, "size": 33},
+            null]},
+          null]}}
+      }
+    }|json} in
   let theories = read_proof_json ~coma:"a.coma" (String ("proof.json", json)) in
   theories |> List.iter (fun theory ->
-    Printf.printf "%s:%s\n" theory.file theory.theory;
+    Format.printf "%s:%s\n" theory.file theory.theory;
     theory.goal_info |> List.iter (fun (goal, _) -> Format.printf "  %a\n" pp_goal goal));
   [%expect {|
     a.coma:theory1
-      vc1.split_vc.0 |}]
+      vc1.split_vc.0
+    a.coma:theory2
+      vc2.split_vc.0.split_vc.1
+      vc2.split_vc.1
+    |}]

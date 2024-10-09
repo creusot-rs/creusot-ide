@@ -157,7 +157,7 @@ let parse_theory ~coma visit decoder =
   (* After traversing the vc the tactic names should be known *)
   let force_goal ({ vc; tactics }, range) =
     { vc; tactics = force_tactic_path tactics }, range in
-  visit (List.map force_goal !goals)
+  visit (List.map force_goal (List.rev !goals))
 
 let parse_theories ~coma (visit : theory -> unit) decoder =
   eat_Os decoder;
@@ -205,7 +205,7 @@ let parse_json_list ~coma decoder =
   let theories = ref [] in
   let visit theory = theories := theory :: !theories in
   parse_json ~coma visit decoder;
-  !theories
+  List.rev !theories
 
 let read_proof_json ~coma source : theory list =
   let source = match source with
