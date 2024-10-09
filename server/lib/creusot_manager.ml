@@ -267,14 +267,16 @@ end
 let status_of_thy json_file (theory : ProofPath.theory) =
   let open ProofPath in
   let open RustInfo in
-  match theory.goal_info with
-  | [] -> Qed
-  | (_ :: _) as goals ->
-    let from_goal { goal; goal_range = range; is_null }=
-      if is_null then
-        Some (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path json_file) ~range)
-      else None in
-    ToProve (Array.of_list (List.filter_map from_goal goals))
+  let goals = theory.goal_info in
+  let from_goal { goal; goal_range = range; is_null }=
+    if is_null then
+      Some (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path json_file) ~range)
+    else None in
+  let goals = Array.of_list (List.filter_map from_goal goals) in
+  if Array.length goals = 0 then
+    Qed
+  else
+    ToProve goals
 
 let get_status ident = match Hashtbl.find_opt theory_map ident with
   | None -> Debug.debug ("No proofs found for " ^ ident); RustInfo.Unknown
