@@ -3,7 +3,8 @@ open Hacky_coma_parser
 open Why3findUtil
 open Util
 
-let theory_map : (string, ProofPath.theory) Hashtbl.t = Hashtbl.create 32
+(* Map from theory name to its proof.json path and the theory info *)
+let theory_map : (string, string * ProofPath.theory) Hashtbl.t = Hashtbl.create 32
 let proof_json_map : (string, ProofPath.theory list) Hashtbl.t = Hashtbl.create 16
 
 let orphans : (string, unit) Hashtbl.t = Hashtbl.create 32
@@ -254,18 +255,18 @@ module RustInfo = struct
   let empty = { inline_items = []; orphans = [] }
 end
 
-let status_of_thy theory =
+let status_of_thy json_file theory =
   let open ProofPath in
   let open RustInfo in
   match theory.goal_info with
   | [] -> Qed
   | (_ :: _) as goals ->
-    let from_goal (goal, range) = (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path theory.file) ~range) in
+    let from_goal (goal, range) = (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path json_file) ~range) in
     ToProve (Array.of_list (List.map from_goal goals))
 
 let get_status ident = match Hashtbl.find_opt theory_map ident with
   | None -> Debug.debug ("No proofs found for " ^ ident); RustInfo.Unknown
-  | Some thy -> status_of_thy thy
+  | Some (json_file, thy) -> status_of_thy json_file thy
 
 let find_orphan_goals ~package modname visited =
   match subtrie (match package with None -> [modname] | Some package -> [package; modname]) with
@@ -394,7 +395,7 @@ let add_proof_json src =
     let coma = Filename.dirname file ^ ".coma" in
     let theories = read_proof_json ~coma src in
     theories |> List.iter (fun theory ->
-      Hashtbl.replace theory_map theory.ProofPath.theory theory);
+      Hashtbl.replace theory_map theory.ProofPath.theory (file, theory));
     Hashtbl.replace proof_json_map (file_of_source src) theories
   with
   | e ->
