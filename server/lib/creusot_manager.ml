@@ -270,8 +270,8 @@ let status_of_thy json_file (theory : ProofPath.theory) =
   match theory.goal_info with
   | [] -> Qed
   | (_ :: _) as goals ->
-    let from_goal { goal; goal_range = range; is_unproved }=
-      if is_unproved then
+    let from_goal { goal; goal_range = range; is_null }=
+      if is_null then
         Some (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path json_file) ~range)
       else None in
     ToProve (Array.of_list (List.filter_map from_goal goals))

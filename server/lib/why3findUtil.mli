@@ -19,7 +19,7 @@ module ProofPath : sig
   type 'a goal_info = {
     goal: 'a;
     goal_range: Range.t;
-    is_unproved: bool;
+    is_null: bool;
   }
   type info_goal = goal goal_info
   type theory = info_goal list with_theory
