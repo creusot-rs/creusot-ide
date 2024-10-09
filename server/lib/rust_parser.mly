@@ -26,28 +26,20 @@
 
 %start ty0 impl_subject0 impl_subject1
 
-%type <impl_subject> impl_subject0 impl_subject1;
+%type <impl_subject> impl_subject0 impl_subject1
 %type <ty> ty0 ty
-%type <ty list> tys
 %type <qualid> qualid
 
 %%
 
 impl_subject0:
-| LANGLE ty AS ty RANGLE EOF { Trait ($4, $2) }
-| ty EOF { Inherent $1 }
+| LANGLE t=ty AS trait=ty RANGLE EOF { Trait (trait, t) }
+| t=ty EOF { Inherent t }
 
+(* https://doc.rust-lang.org/stable/reference/items/implementations.html *)
 impl_subject1:
-| ty_binders trait=ty FOR t=ty where_clause EOF { Trait (trait, t) }
-| ty_binders t=ty where_clause EOF { Inherent t }
-
-ty_binders:
-| { () }
-| LANGLE separated_list(COMMA, ty_binder) RANGLE { () }
-
-ty_binder:
-| IDENT { () }
-| IDENT COLON separated_list(PLUS, ty) { () }
+| generic_params? trait=ty FOR t=ty where_clause EOF { Trait (trait, t) }
+| generic_params? t=ty where_clause EOF { Inherent t }
 
 ty0:
 | ty EOF { $1 }
@@ -55,13 +47,17 @@ ty0:
 ty:
 | qualid { App ($1, []) }
 | UNIT { Unit }
-| qualid LANGLE tys RANGLE { App ($1, $3) }
-| LPAR ts=separated_list(COMMA, ty) RPAR { Tup ts }
+| t=qualid COLONCOLON? args=generic_args { App (t, args) }
+| LPAR ty RPAR { $2 }
+| LPAR t=ty COMMA ts=separated_list(COMMA, ty) RPAR { Tup (t :: ts) }
 
-tys:
-| ty { [$1] }
-| ty COMMA tys { $1 :: $3 }
-| { [] }
+(* https://doc.rust-lang.org/stable/reference/paths.html#paths-in-expressions *)
+generic_args:
+| LANGLE separated_trailing(COMMA, generic_arg) RANGLE { $2 }
+
+generic_arg:
+| lifetime { LifetimeArg $1 }
+| ty { TypeArg $1 }
 
 (* https://doc.rust-lang.org/stable/reference/items/generics.html#where-clauses *)
 where_clause:
@@ -90,7 +86,7 @@ lifetime_bounds:
 | separated_trailing(PLUS, lifetime) { () }
 
 lifetime:
-| LIFETIME_OR_LABEL { () }
+| LIFETIME_OR_LABEL { $1 }
 
 %public optional_bracket(l, m, r):
 | m { $1 }
@@ -104,7 +100,7 @@ generic_params:
 | LANGLE separated_trailing(COMMA, generic_param) RANGLE { () }
 
 generic_param:
-| outer_attribute param { () }
+| outer_attribute* param { () }
 
 param:
 | lifetime_param | type_param | const_param { () }

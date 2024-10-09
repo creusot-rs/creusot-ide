@@ -110,6 +110,7 @@ and coma_module_meta_end state = parse
 
 and rust_lexer end_flag = parse
     | "as" { AS } (* reminder: overlaps with ident! *)
+    | '\'' ident { LIFETIME_OR_LABEL (Lexing.lexeme lexbuf) }
     | ident { IDENT (Lexing.lexeme lexbuf) } 
     | '<' { LANGLE }
     | '>' { RANGLE }

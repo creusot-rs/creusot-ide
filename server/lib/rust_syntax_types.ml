@@ -4,9 +4,12 @@ type qualid =
     }
 
 type ty
-  = App of qualid * ty list
+  = App of qualid * generic_arg list
   | Tup of ty list
   | Unit
+and generic_arg
+  = LifetimeArg of string
+  | TypeArg of ty
 
 type impl_subject
   = Trait of ty * ty

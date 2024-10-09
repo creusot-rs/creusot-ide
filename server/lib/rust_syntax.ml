@@ -11,9 +11,12 @@ let rec fprint_list fprint sep h = function
 
 let rec fprint_ty h = function
   | App (q, []) -> fprint_qualid h q
-  | App (q, ts) -> fprintf h "%a<%a>" fprint_qualid q (fprint_list fprint_ty ", ") ts
+  | App (q, ts) -> fprintf h "%a<%a>" fprint_qualid q (fprint_list fprint_generic_arg ", ") ts
   | Unit -> fprintf h "()"
   | Tup ts -> fprintf h "(%a)" (fprint_list fprint_ty ",") ts
+and fprint_generic_arg h = function
+  | LifetimeArg l -> fprintf h "%s" l
+  | TypeArg t -> fprint_ty h t
 
 let fprint_impl_subject h = function
   | Trait (t1, t2) -> fprintf h "<%a as %a>" fprint_ty t1 fprint_ty t2

@@ -43,13 +43,18 @@ and unify_ty (t : Rust_syntax.ty) (u : Rust_syntax.ty) : bool =
   let open Rust_syntax in
   (match t, u with
   | Unit, Unit -> true
-  | App (t1, t2), App (u1, u2) -> unify_qualid t1 u1 && unify_ty_list t2 u2
+  | App (t1, t2), App (u1, u2) -> unify_qualid t1 u1 && unify_generic_arg_list t2 u2
   | _, _ -> false
   )
-and unify_ty_list t u =
+and unify_generic_arg_list t u =
   match t, u with
   | [], [] -> true
-  | t1 :: t2, u1 :: u2 -> unify_ty t1 u1 && unify_ty_list t2 u2
+  | t1 :: t2, u1 :: u2 -> unify_generic_arg t1 u1 && unify_generic_arg_list t2 u2
+  | _, _ -> false
+and unify_generic_arg t u =
+  match t, u with
+  | LifetimeArg _, LifetimeArg _ -> true  (* alpha renaming of lifetimes is ignored *)
+  | TypeArg t, TypeArg u -> unify_ty t u
   | _, _ -> false
 
 let unify_impl_subject t u =
