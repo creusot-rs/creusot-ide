@@ -137,7 +137,11 @@ let coma_lexbuf ~uri lexbuf =
       insert_demangle mod_info.name.ident mod_info.demangled;
       insert_def_path mod_info.demangled mod_info.name);
     ComaInfo.add_file uri { modules = state.State.modules; locations = state.State.locations }
-  | exception e -> Debug.debug ("Failed to parse coma file " ^ lexbuf.Lexing.lex_curr_p.Lexing.pos_fname ^ ": " ^ Printexc.to_string e)
+  | exception e ->
+    let p = lexbuf.lex_curr_p in
+    Debug.debug (Printf.sprintf
+      "Failed to parse coma file %s:%d:%d: %s" p.pos_fname (p.pos_lnum + 1) (p.pos_cnum - p.pos_bol + 1)
+      (Printexc.to_string e))
 
 let coma_file ~uri (path : string) : bool =
   try
