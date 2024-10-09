@@ -222,6 +222,12 @@ let env_ = lazy (
   | _ -> ());
   let env = Config.create_env ~config () in
   Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.wconfig;
+  let check_warning w =
+    if not (List.mem w config.warnoff) then
+      Printf.eprintf "Suggestion: disable warning \"%s\" in why3config.json, otherwise Why3 may produce lots of warnings on Creusot-generated code\n%!" w
+  in
+  check_warning "unused_variable";
+  check_warning "axiom_abstract";
   List.iter (fun unwarn ->
     Why3.Loc.disable_warning @@ Why3.Loc.register_warning unwarn Why3.Pp.empty_formatted)
     ("unused_variable" :: "axiom_abstract" :: config.warnoff);
