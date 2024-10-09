@@ -43,7 +43,7 @@ let%expect_test _ =
   let theories = read_proof_json ~coma:"a.coma" (String ("proof.json", json)) in
   theories |> List.iter (fun theory ->
     Format.printf "%s:%s\n" theory.file theory.theory;
-    theory.goal_info |> List.iter (fun (goal, _) -> Format.printf "  %a\n" pp_goal goal));
+    theory.goal_info |> List.iter (fun { goal; _ } -> Format.printf "  %a\n" pp_goal goal));
   [%expect {|
     a.coma:theory1
       vc1.split_vc.0

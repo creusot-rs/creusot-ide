@@ -264,14 +264,17 @@ module RustInfo = struct
   let empty = { inline_items = []; orphans = [] }
 end
 
-let status_of_thy json_file theory =
+let status_of_thy json_file (theory : ProofPath.theory) =
   let open ProofPath in
   let open RustInfo in
   match theory.goal_info with
   | [] -> Qed
   | (_ :: _) as goals ->
-    let from_goal (goal, range) = (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path json_file) ~range) in
-    ToProve (Array.of_list (List.map from_goal goals))
+    let from_goal { goal; goal_range = range; is_unproved }=
+      if is_unproved then
+        Some (string_of_goal goal, Location.create ~uri:(DocumentUri.of_path json_file) ~range)
+      else None in
+    ToProve (Array.of_list (List.filter_map from_goal goals))
 
 let get_status ident = match Hashtbl.find_opt theory_map ident with
   | None -> Debug.debug ("No proofs found for " ^ ident); RustInfo.Unknown
@@ -418,7 +421,7 @@ let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt 
     let hints = ref [] in
     let add_hint l = hints := l :: !hints in
     theories |> List.iter (fun theory ->
-      theory.goal_info |> List.iter (fun (goal, range) ->
+      theory.goal_info |> List.iter (fun { goal; goal_range = range; _ } ->
         let qualified_goal = { theory with goal_info = goal } in
         let command = Command.create
           ~title:"Show proof context"

@@ -16,7 +16,13 @@ module ProofPath : sig
     theory: string;
     goal_info: 'a;
   }
-  type theory = (goal * Range.t) list with_theory
+  type 'a goal_info = {
+    goal: 'a;
+    goal_range: Range.t;
+    is_unproved: bool;
+  }
+  type info_goal = goal goal_info
+  type theory = info_goal list with_theory
   type qualified_goal = goal with_theory
 
   val pp_theory : Format.formatter -> theory -> unit

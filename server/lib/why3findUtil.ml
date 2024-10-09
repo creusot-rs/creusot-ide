@@ -16,7 +16,13 @@ module ProofPath = struct
     theory: string;
     goal_info: 'a;
   }
-  type theory = (goal * Range.t) list with_theory
+  type 'a goal_info = {
+    goal: 'a;
+    goal_range: Range.t;
+    is_null: bool;
+  }
+  type info_goal = goal goal_info
+  type theory = info_goal list with_theory
   type qualified_goal = goal with_theory
 
   let force_tactic_path : lazy_tactic_path -> tactic_path =
@@ -32,11 +38,11 @@ module ProofPath = struct
   let pp_lazy_goal = pp_goal_ (fun h t -> pp_tactic_path h (force_tactic_path t))
   let pp_goal = pp_goal_ pp_tactic_path
 
-  let pp_goals h = Format.pp_print_list (fun h (goal, _pos) -> pp_goal h goal) h
+  let pp_info_goals h = Format.pp_print_list (fun h goal -> pp_goal h goal.goal) h
 
-  let pp_theory h t = Format.fprintf h "%s:%s:@[%a@]" t.file t.theory pp_goals t.goal_info
+  let pp_theory h (t : theory) = Format.fprintf h "%s:%s:@[%a@]" t.file t.theory pp_info_goals t.goal_info
 
-  let pp_qualified_goal h t = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goal t.goal_info
+  let pp_qualified_goal h (t : qualified_goal) = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goal t.goal_info
 
   let string_of_goal = Format.asprintf "%a" pp_goal
 
@@ -110,7 +116,7 @@ let from_jsonm_range ((start_l, start_c), end_) =
   let position_of (line, character) = Position.create ~line:(line - 1) ~character in
   Range.create ~start:(position_of (start_l, start_c - 1)) ~end_:(position_of end_)
 
-let rec parse_proofs_body ~coma visit decoder tactic_path =
+let rec parse_proofs_body ~coma vc visit decoder tactic_path =
   let tactic = ref None in
   let rec loop () = match Jsonm.decode decoder with
     | `Lexeme (`Name "tactic") ->
@@ -119,7 +125,7 @@ let rec parse_proofs_body ~coma visit decoder tactic_path =
       loop ()
     | `Lexeme (`Name "children") ->
       eat_As decoder;
-      let rec loop_children i = match parse_proofs ~coma visit decoder ((tactic, i) :: tactic_path) with
+      let rec loop_children i = match parse_proofs ~coma vc visit decoder ((tactic, i) :: tactic_path) with
         | TrailingAe -> ()
         | NoAe -> loop_children (i + 1)
       in loop_children 0; loop ()
@@ -132,13 +138,18 @@ let rec parse_proofs_body ~coma visit decoder tactic_path =
     | e -> throw e decoder
   in loop ()
 
-and parse_proofs ~coma visit decoder tactic_path =
+and parse_proofs ~coma vc (visit : lazy_goal goal_info -> unit) decoder tactic_path =
   match Jsonm.decode decoder with
-  | `Lexeme `Os -> parse_proofs_body ~coma visit decoder tactic_path; NoAe
+  | `Lexeme `Os ->
+    (* For non-null goals (non-leaf or proved), we remember the location of the opening brace *)
+    let goal_range = from_jsonm_range (Jsonm.decoded_range decoder) in
+    let tactics = List.rev tactic_path in
+    visit { goal = { vc; tactics }; goal_range; is_null = false};
+    parse_proofs_body ~coma vc visit decoder tactic_path; NoAe
   | `Lexeme `Null ->
-    let range = from_jsonm_range (Jsonm.decoded_range decoder) in
-    let tactic_path = List.rev tactic_path in
-    visit range tactic_path; NoAe
+    let goal_range = from_jsonm_range (Jsonm.decoded_range decoder) in
+    let tactics = List.rev tactic_path in
+    visit { goal = { vc; tactics }; goal_range; is_null = true }; NoAe
   | `Lexeme `Ae -> TrailingAe
   | e -> throw e decoder
 
@@ -147,16 +158,17 @@ let parse_theory ~coma visit decoder =
   let goals = ref [] in
   let rec loop () = match Jsonm.decode decoder with
     | `Lexeme (`Name vc) ->
-      let visit_goal = fun range tactics -> goals := ({ vc; tactics }, range) :: !goals in
-      (match parse_proofs ~coma visit_goal decoder [] with
+      let visit_goal = fun goal -> goals := goal :: !goals in
+      (match parse_proofs ~coma vc visit_goal decoder [] with
       | TrailingAe -> throw (`Lexeme `Ae) decoder
       | NoAe -> loop ())
     | `Lexeme `Oe -> ()
     | e -> throw e decoder
   in loop ();
   (* After traversing the vc the tactic names should be known *)
-  let force_goal ({ vc; tactics }, range) =
-    { vc; tactics = force_tactic_path tactics }, range in
+  let force_goal info_goal =
+    let goal = { info_goal.goal with tactics = force_tactic_path info_goal.goal.tactics } in
+    { info_goal with goal } in
   visit (List.map force_goal (List.rev !goals))
 
 let parse_theories ~coma (visit : theory -> unit) decoder =
