@@ -22,7 +22,7 @@ let%expect_test _ =
     pub fn f() {}
   }" in
   let names = list_names lexbuf in
-  List.iter (fun (def, _) -> Rust_syntax.print_def_path def) names;
+  List.iter (fun (def, _, _) -> Rust_syntax.print_def_path def) names;
   [%expect {| impl{Node<K>}::f |}]
 
 let%expect_test _ =

@@ -44,7 +44,10 @@ and unify_ty (t : Rust_syntax.ty) (u : Rust_syntax.ty) : bool =
   let open Rust_syntax in
   (match t, u with
   | Unit, Unit -> true
+  | Const x, Const y -> unify_qualid x y
+  | Tup ts, Tup us -> List.length ts = List.length us && List.for_all2 unify_ty ts us
   | App (t1, t2), App (u1, u2) -> unify_qualid t1 u1 && unify_generic_arg_list t2 u2
+  | Ref (_, t), Ref (_, u) -> unify_ty t u
   | _, _ -> false
   )
 and unify_generic_arg_list t u =
@@ -89,7 +92,9 @@ let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident opti
       Option.bind (Hashtbl.find_opt trie.ident_map ident)
         (fun t -> lookup_trie t rest)
   | Impl impl :: rest ->
-      Option.bind (List.find_opt (fun (i, _) -> unify_impl_subject impl i) trie.impl_map)
+      Option.bind (List.find_opt (fun (i, _) ->
+        (* log Debug "Unify %a %a" Rust_syntax.fprint_impl_subject i Rust_syntax.fprint_impl_subject impl; *)
+        unify_impl_subject impl i) trie.impl_map)
         (fun (_, t) -> lookup_trie t rest)
   | Rust_syntax.Unknown _s :: _rest -> None
 
@@ -202,7 +207,7 @@ let get_coma_links uri =
 
 type rust_doc = {
   module_: string;
-  defns: (Rust_syntax.def_path * Lsp.Types.Range.t) list;
+  defns: (Rust_syntax.def_path * string list * Lsp.Types.Range.t) list;
 }
 
 let rust_files : (string, rust_doc) Hashtbl.t = Hashtbl.create 16
@@ -217,7 +222,7 @@ let rust_lexbuf ~path lexbuf =
   match list_names lexbuf with
   | names ->
     let module_ = path |> Filename.basename |> Filename.remove_extension in
-    let defns = names |> List.map (fun (def_path, span) -> (def_path, span_to_range span)) in
+    let defns = names |> List.map (fun (def_path, attrs, span) -> (def_path, attrs, span_to_range span)) in
     Hashtbl.add rust_files path { module_; defns }
   | exception _ -> ()
 
@@ -307,7 +312,7 @@ let get_rust_info ~package ~path : RustInfo.t =
   | Some doc ->
     let visited = Hashtbl.create 16 in
     let inline_items =
-      doc.defns |> List.filter_map @@ fun (def_path, range) ->
+      doc.defns |> List.filter_map @@ fun (def_path, _attrs, range) ->
         let (let+) = Option.bind in
         let dpath = match package with
           | None -> Other doc.module_ :: def_path

@@ -11,7 +11,8 @@ let minus_position p n =
     { p with Lexing.pos_cnum = p.Lexing.pos_cnum - n }
 
 type span = Lexing.position * Lexing.position
-let funnames : (def_path * span) list ref = ref []
+type attributes = string list
+let funnames : (def_path * attributes * span) list ref = ref []
 let get_funnames () = !funnames
 type stack_symbol
     = Curly
@@ -24,6 +25,11 @@ let pop_stack () =
     match !stack with
     | [] -> ()
     | _ :: tl -> stack := tl
+
+let attributes = ref []
+let clear_attributes () = attributes := []
+let add_attribute attr = attributes := attr :: !attributes
+let get_attributes () = !attributes
 
 let mk_name name =
     let rec unstack qname = function
@@ -55,12 +61,15 @@ rule rust = parse
     | "trait" [^ '\n' '/' '{']* '{' {
         push_stack Trait; rust lexbuf
     }
-    | '{' { push_stack Curly; rust lexbuf }
+    | "#[" white* ([^ '\n' ']' ]* as attr) white* "]" { line_incs lexbuf; add_attribute attr; rust lexbuf }
+    | '{' { clear_attributes (); push_stack Curly; rust lexbuf }
     | "fn" white+ (ident as name) {
         line_incs lexbuf;
-        funnames := (mk_name name, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
+        let attrs = get_attributes () in
+        clear_attributes ();
+        funnames := (mk_name name, attrs, (minus_position lexbuf.Lexing.lex_curr_p (String.length name), lexbuf.Lexing.lex_curr_p)) :: !funnames;
         rust lexbuf }
-    | '}' { pop_stack (); rust lexbuf }
+    | '}' { clear_attributes(); pop_stack (); rust lexbuf }
     | "impl" white* {
         line_incs lexbuf;
         let end_flag = ref false in

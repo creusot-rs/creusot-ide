@@ -1,30 +1,11 @@
 %{
     open Rust_syntax
 %}
-
-%token <string> IDENT
-%token <string> LIFETIME_OR_LABEL
-%token ARROW
-%token CONST
-%token OCTOTHORPE
-%token LANGLE
-%token RANGLE
-%token LPAR
-%token RPAR
-%token LBRA
-%token RBRA
-%token COMMA
-%token UNIT
-%token COLONCOLON
-%token COLON
-%token PLUS
-%token EQUALS
-%token QUESTION
-%token AMP
-%token AS
-%token FOR
-%token MUT
-%token WHERE
+%token <string> IDENT LIFETIME_OR_LABEL
+%token CONST AS FOR MUT WHERE
+%token OCTOTHORPE COMMA UNIT COLON PLUS EQUALS QUESTION AMP
+%token LANGLE RANGLE LPAR RPAR LBRA RBRA LCURLY RCURLY
+%token ARROW COLONCOLON
 %token EOF
 
 %start ty0 impl_subject0 impl_subject1
@@ -125,10 +106,7 @@ outer_attribute:
 | OCTOTHORPE LBRA attr RBRA { () }
 
 attr:
-| todo { () }
-
-todo:
-| error { assert false }
+| error { failwith "attributes parser not implemented" }
 
 (* https://doc.rust-lang.org/stable/reference/paths.html#paths-in-types *)
 type_path:

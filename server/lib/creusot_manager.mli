@@ -16,7 +16,7 @@ val get_coma_links : DocumentUri.t -> DocumentLink.t list
 
 type rust_doc = {
     module_: string;
-    defns: (Rust_syntax.def_path * Range.t) list;
+    defns: (Rust_syntax.def_path * string list * Range.t) list;
   }
 
 val rust_file : string -> unit

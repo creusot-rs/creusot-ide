@@ -5,6 +5,16 @@ type qualid =
 
 type lifetime = string
 
+type delim_token_tree =
+  | Paren of token_tree list
+  | Bracket of token_tree list
+  | Curly of token_tree list
+and token_tree =
+  | Token of string
+  | Delim of delim_token_tree
+
+type attribute = Attr of qualid * delim_token_tree option
+
 type ty =
   | Const of qualid
   | App of qualid * generic_arg list
@@ -21,7 +31,7 @@ and generic_arg =
   | TypeArg of ty
 
 type impl_subject =
-  | Trait of ty * ty
+  | Trait of ty * ty  (* (trait, type) *)
   | Inherent of ty
 
 type def_path_item =

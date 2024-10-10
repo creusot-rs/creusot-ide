@@ -23,7 +23,7 @@ and fprint_generic_arg h = function
   | TypeArg t -> fprint_ty h t
 
 let fprint_impl_subject h = function
-  | Trait (t1, t2) -> fprintf h "<%a as %a>" fprint_ty t1 fprint_ty t2
+  | Trait (trait, ty) -> fprintf h "<%a as %a>" fprint_ty ty fprint_ty trait
   | Inherent t -> fprint_ty h t
 
 let fprint_def_path_item h = function
