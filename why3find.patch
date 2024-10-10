@@ -1,0 +1,22 @@
+diff --git a/src/runner.ml b/src/runner.ml
+index a4a4c48..601d0df 100644
+--- a/src/runner.ml
++++ b/src/runner.ml
+@@ -380,7 +380,7 @@ module MockRunner : WRunner = struct
+ 
+   let interrupted = (* expected answer, see below *)
+     let highfailure = Call_provers.{
+-        pr_answer = HighFailure ;
++        pr_answer = HighFailure "why3: interrupted" ;
+         pr_status = Unix.WEXITED 0 ;
+         pr_time = 0. ;
+         pr_steps = 0 ;
+@@ -481,7 +481,7 @@ let call_prover (config : Why3.Whyconf.main)
+           Timeout timeout, false
+         | Invalid | Unknown _ | OutOfMemory | StepLimitExceeded ->
+           Unknown pr.pr_time, true
+-        | Failure _ | HighFailure ->
++        | Failure _ | HighFailure _ ->
+           (if !canceled then NoResult else
+            if !timedout then Timeout timeout else
+              Failed), false
