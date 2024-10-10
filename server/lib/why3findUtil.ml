@@ -1,6 +1,7 @@
 open Why3find
 open Lsp.Types
 open Util
+open Log
 
 module ProofPath = struct
   type lazy_tactic_path = (string option ref * int) list  (* tactic names might not have been resolved yet *)
@@ -230,13 +231,13 @@ let read_proof_json ~coma source : theory list =
 let env_ = lazy (
   let config = Config.load_config "." in
   (match config.packages with
-  | [] -> Printf.eprintf "Warning: no package found in config \"why3find.json\", at least prelude is needed for creusot proofs\n"
+  | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
   | _ -> ());
   let env = Config.create_env ~config () in
   Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.wconfig;
   let check_warning w =
     if not (List.mem w config.warnoff) then
-      Printf.eprintf "Suggestion: disable warning \"%s\" in why3config.json, otherwise Why3 may produce lots of warnings on Creusot-generated code\n%!" w
+      log Warning "Disable warning \"%s\" in why3config.json, otherwise Why3 may produce lots of warnings on Creusot-generated code" w
   in
   check_warning "unused_variable";
   check_warning "axiom_abstract";
@@ -253,10 +254,10 @@ let rec path_goal_ theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.t
   | (tactic, i) :: q ->
     let display_breadcrumbs () = Format.asprintf "%s:%a" theory ProofPath.pp_tactic_path (List.rev breadcrumbs) in
     match Session.apply e tactic g with
-    | None -> Printf.eprintf "%s: Could not apply tactic %s%!" (display_breadcrumbs ()) tactic; None
+    | None -> log Error "%s: Could not apply tactic %s" (display_breadcrumbs ()) tactic; None
     | Some gs ->
       match List.nth_opt gs i with
-      | None -> Printf.eprintf "%s: Index %d out of bounds, tactic %s gave only %d goals%!" (display_breadcrumbs ()) i tactic (List.length gs); None
+      | None -> log Error "%s: Index %d out of bounds, tactic %s gave only %d goals" (display_breadcrumbs ()) i tactic (List.length gs); None
       | Some g -> path_goal_ theory e g q ((tactic, i) :: breadcrumbs)
 
 let path_goal ~theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_path) : Session.goal option =
@@ -278,7 +279,7 @@ open Why3
         let tmap,format = Why3.Env.(read_file base_language env file) in
         Some (Wstdlib.Mstr.bindings tmap |> List.map snd |> List.sort byloc , format)
       with error ->
-        Printf.eprintf "%s\n%!" (Printexc.to_string error) ;
+        log Error "load_theories: %s" (Printexc.to_string error) ;
         None
       end
 
@@ -296,4 +297,4 @@ let get_goal (q : qualified_goal) : string option =
     let+ goal = path_goal ~theory:(Session.name theory) env.wenv goal q.goal_info.tactics in
     let task = Session.goal_task goal in
     Some (Format.asprintf "%a" Why3.Pretty.print_sequent task)
-  with e -> Debug.debug ("Failed to load why3: " ^ Printexc.to_string e); None
+  with e -> log Error "get_goal: Failed to load why3: %s" (Printexc.to_string e); None

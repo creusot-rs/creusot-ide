@@ -80,21 +80,20 @@ class lsp_server =
         | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
           let root = DocumentUri.to_path folder.WorkspaceFolder.uri in
           let open Creusot_lsp in
-          Debug.debug_handler (log_info notify_back) @@ fun () ->
-            Creusot_manager.read_cargo ~root;
-            (match Creusot_manager.get_package_name () with
-            | None -> ()
-            | Some crate ->
-              (* Why3session.collect_sessions_for ~root ~crate; *)
-              let (/) = Filename.concat in
-              let global_coma = root / "target" / (crate ^ "-lib.coma") in
-              let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
-              if Creusot_manager.coma_file ~uri:(DocumentUri.of_path global_coma) global_coma then (
-                Creusot_manager.add_proof_json (File global_proof);
-                add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
-                add_revdeps (DocumentUri.of_path global_proof) AllRsFiles
-              );
-            )
+          Creusot_manager.read_cargo ~root;
+          (match Creusot_manager.get_package_name () with
+          | None -> ()
+          | Some crate ->
+            (* Why3session.collect_sessions_for ~root ~crate; *)
+            let (/) = Filename.concat in
+            let global_coma = root / "target" / (crate ^ "-lib.coma") in
+            let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
+            if Creusot_manager.coma_file ~uri:(DocumentUri.of_path global_coma) global_coma then (
+              Creusot_manager.add_proof_json (File global_proof);
+              add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
+              add_revdeps (DocumentUri.of_path global_proof) AllRsFiles)
+          );
+          Lwt.return ()
         | _ -> Lwt.return ()
       in
       super#on_req_initialize ~notify_back params
@@ -147,14 +146,13 @@ class lsp_server =
           async (self#update_diagnostics ~notify_back uri)
 
     method private update_diagnostics ~notify_back uri =
-      let* diags = Debug.debug_handler (log_info notify_back) (fun () ->
-        Creusot_manager.get_rust_diagnostics uri) in
+      let diags = Creusot_manager.get_rust_diagnostics uri in
       notify_back#send_diagnostic diags
 
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
         ?languageId
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
-        let* () = Debug.debug_handler (log_info notify_back) (fun () -> self#refresh_file ~notify_back ~languageId uri ~content) in
+        let () = self#refresh_file ~notify_back ~languageId uri ~content in
         self#update_diagnostics ~notify_back uri
 
     method private refresh_file ~notify_back ?languageId (uri : DocumentUri.t) ~content =
@@ -214,12 +212,12 @@ class lsp_server =
 
     method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
       let path = DocumentUri.to_path uri in
-      Debug.debug_handler (log_info notify_back) @@ fun () ->
-        if Filename.check_suffix path ".rs" then
+      let lenses = if Filename.check_suffix path ".rs" then
           Creusot_manager.get_rust_lenses uri
         else if Filename.check_suffix path ".coma" then
             Creusot_manager.get_coma_lenses uri
         else []
+      in return lenses
 
     method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
 
@@ -234,8 +232,7 @@ class lsp_server =
       match r with
       | TextDocumentLink (DocumentLinkParams.{ textDocument = { uri }; _ }) ->
         let path = DocumentUri.to_path uri in
-        Debug.debug_handler (log_info notify_back) @@ fun () ->
-        if Filename.check_suffix path ".coma" then
+        Lwt.return @@ if Filename.check_suffix path ".coma" then
             Some (Creusot_manager.get_coma_links uri)
           else None
       | _ -> super#on_request_unhandled ~notify_back ~id r
@@ -250,8 +247,7 @@ class lsp_server =
           match Why3findUtil.ProofPath.qualified_goal_of_json arg with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
-            let goal =
-              Debug.debug_stderr @@ fun () -> Why3findUtil.get_goal path in
+            let goal = Why3findUtil.get_goal path in
             let msg = match goal with
             | None -> "No goal found"
             | Some goal -> goal in

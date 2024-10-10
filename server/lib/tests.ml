@@ -17,14 +17,13 @@ let%expect_test _ =
 
 let%expect_test _ =
   let open Hacky_rs_parser in
-  Debug.silence_debug (fun () ->
-    let lexbuf = Lexing.from_string "{rust|
-    impl Node<K> where K::DeepModelTy : OrdLogic, {
-      pub fn f() {}
-    }" in
-    let names = list_names lexbuf in
-    List.iter (fun (def, _) -> Rust_syntax.print_def_path def) names);
-    [%expect {| impl{Node<K>}::f |}]
+  let lexbuf = Lexing.from_string "{rust|
+  impl Node<K> where K::DeepModelTy : OrdLogic, {
+    pub fn f() {}
+  }" in
+  let names = list_names lexbuf in
+  List.iter (fun (def, _) -> Rust_syntax.print_def_path def) names;
+  [%expect {| impl{Node<K>}::f |}]
 
 let%expect_test _ =
   let open Why3findUtil in
@@ -46,8 +45,12 @@ let%expect_test _ =
     theory.goal_info |> List.iter (fun { goal; _ } -> Format.printf "  %a\n" pp_goal goal));
   [%expect {|
     a.coma:theory1
+      vc1
       vc1.split_vc.0
     a.coma:theory2
+      vc2
+      vc2.split_vc.0
+      vc2.split_vc.0.split_vc.0
       vc2.split_vc.0.split_vc.1
       vc2.split_vc.1
     |}]

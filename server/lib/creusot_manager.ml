@@ -2,6 +2,7 @@ open Lsp.Types
 open Hacky_coma_parser
 open Why3findUtil
 open Util
+open Log
 
 (* Map from theory name to its proof.json path and the theory info *)
 let theory_map : (string, string * ProofPath.theory) Hashtbl.t = Hashtbl.create 32
@@ -98,7 +99,7 @@ let insert_def_path d =
   Mutex.protect m (fun () -> insert_trie global_trie d)
 let lookup_def_path d =
   let r = Mutex.protect m (fun () -> lookup_trie global_trie d) in
-  if Option.is_none r then Debug.debug ("No coma module found for " ^ Rust_syntax.string_of_def_path d);
+  if Option.is_none r then log Debug "No coma module found for %s" (Rust_syntax.string_of_def_path d);
   r
 
 let subtrie =
@@ -144,9 +145,11 @@ let coma_lexbuf ~uri lexbuf =
     ComaInfo.add_file uri { modules = state.State.modules; locations = state.State.locations }
   | exception e ->
     let p = lexbuf.lex_curr_p in
-    Debug.debug (Printf.sprintf
-      "Failed to parse coma file %s:%d:%d: %s" p.pos_fname (p.pos_lnum + 1) (p.pos_cnum - p.pos_bol + 1)
-      (Printexc.to_string e))
+    log Error "Failed to parse coma file %s:%d:%d: %s"
+      p.pos_fname
+      (p.pos_lnum + 1)
+      (p.pos_cnum - p.pos_bol + 1)
+      (Printexc.to_string e)
 
 let coma_file ~uri (path : string) : bool =
   try
@@ -158,7 +161,7 @@ let coma_file ~uri (path : string) : bool =
     true
   with
   | Sys_error _ -> false
-  | e -> Debug.debug ("Unexpected exception: " ^ Printexc.to_string e); false
+  | e -> log Error "coma_file: unexpected exception: %s" (Printexc.to_string e); false
 
 let coma_file_as_string ~uri ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
@@ -169,7 +172,7 @@ let get_coma_info uri = ComaInfo.lookup_file uri
 
 let get_coma_lenses uri =
   match get_coma_info uri with
-  | None -> Debug.debug ("not found " ^ DocumentUri.to_path uri); []
+  | None -> log Error "get_coma_lenses: not found %s" (DocumentUri.to_path uri); []
   | Some info ->
     info.modules |> List.map @@ fun info ->
       let range = info.name.loc.range in
@@ -279,7 +282,7 @@ let status_of_thy json_file (theory : ProofPath.theory) =
     ToProve goals
 
 let get_status ident = match Hashtbl.find_opt theory_map ident with
-  | None -> Debug.debug ("No proofs found for " ^ ident); RustInfo.Unknown
+  | None -> log Debug "No proofs found for %s" ident; RustInfo.Unknown
   | Some (json_file, thy) -> status_of_thy json_file thy
 
 let find_orphan_goals ~package modname visited =
@@ -414,10 +417,10 @@ let add_proof_json src =
   with
   | e ->
     let file = match src with File file | String (file, _) -> file in
-    Debug.debug (Printf.sprintf "Failed to read %s: %s" file (Printexc.to_string e))
+    log Error "add_proof_json: failed to read %s: %s" file (Printexc.to_string e)
 
 let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt proof_json_map file with
-  | None -> Debug.debug (Printf.sprintf "hints: %s not found" file); []
+  | None -> log Error "hints: %s not found" file; []
   | Some theories ->
     let open ProofPath in
     let hints = ref [] in

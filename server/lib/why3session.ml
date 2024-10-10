@@ -1,4 +1,5 @@
 open Types
+open Log
 
 let theories : theories_map = Hashtbl.create 32
 
@@ -82,7 +83,7 @@ let debug_theories () =
 
 let get_theory (name : string) =
   let r = Hashtbl.find_opt theories name in
-  if Option.is_none r then Debug.debug ("No proof found for " ^ name);
+  if Option.is_none r then log Debug "No proof found for %s" name;
   r
 
 let encode_segment (s : string) =

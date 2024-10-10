@@ -2,6 +2,7 @@
 open Rust_parser
 open Rust_syntax
 open Util.Lex
+open Log
 
 let print_position p =
     Printf.eprintf "%s:%d:%d\n" p.Lexing.pos_fname p.Lexing.pos_lnum (p.Lexing.pos_cnum - p.Lexing.pos_bol)
@@ -67,7 +68,7 @@ rule rust = parse
         | impl -> push_impl (Some impl); rust lexbuf
         | exception _ ->
             let currp = lexbuf.lex_curr_p in
-            Debug.debug (Printf.sprintf "%s:%d:%d: failed to parse impl" currp.pos_fname currp.pos_lnum (currp.pos_cnum - currp.pos_bol + 1));
+            log Error "%s:%d:%d: failed to parse impl" currp.pos_fname currp.pos_lnum (currp.pos_cnum - currp.pos_bol + 1);
             push_impl None;
             if !end_flag then rust lexbuf
             else rust_impl_start lexbuf
