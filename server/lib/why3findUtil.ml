@@ -36,7 +36,6 @@ module ProofPath = struct
   let pp_goal_ pp_tactic h t =
     Format.fprintf h "%s%a" t.vc pp_tactic t.tactics
 
-  let pp_lazy_goal = pp_goal_ (fun h t -> pp_tactic_path h (force_tactic_path t))
   let pp_goal = pp_goal_ pp_tactic_path
 
   let pp_info_goals h = Format.pp_print_list (fun h goal -> pp_goal h goal.goal) h
@@ -298,3 +297,9 @@ let get_goal (q : qualified_goal) : string option =
     let task = Session.goal_task goal in
     Some (Format.asprintf "%a" Why3.Pretty.print_sequent task)
   with e -> log Error "get_goal: Failed to load why3: %s" (Printexc.to_string e); None
+
+let loc_to_range loc =
+  let _, l1, c1, l2, c2 = Why3.Loc.get loc in
+  Lsp.Types.Range.create (* why is this necessary?       ----------v *)
+    ~start:(Lsp.Types.Position.create ~line:(l1 - 1) ~character:c1)
+    ~end_:(Lsp.Types.Position.create ~line:(l2 - 1) ~character:c2)

@@ -39,3 +39,5 @@ val parse_json : coma:string -> (theory -> unit) -> Jsonm.decoder -> unit
 val read_proof_json : coma:string -> source -> theory list
 
 val get_goal : ProofPath.qualified_goal -> string option
+
+val loc_to_range : Why3.Loc.position -> Range.t

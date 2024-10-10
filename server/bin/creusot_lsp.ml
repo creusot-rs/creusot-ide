@@ -3,29 +3,6 @@ open Creusot_lsp
 
 module Log = (val Logs.src_log Logs.Src.(create "creusotlsp"))
 
-let loc_to_range loc =
-  let _, l1, c1, l2, c2 = Why3.Loc.get loc in
-  Lsp.Types.Range.create (* why is this necessary?       ----------v *)
-    ~start:(Lsp.Types.Position.create ~line:(l1 - 1) ~character:c1)
-    ~end_:(Lsp.Types.Position.create ~line:(l2 - 1) ~character:c2)
-
-let warn loc message =
-  Lsp.Types.Diagnostic.create () ~range:(loc_to_range loc) ~severity:Warning ~source:"Creusot IDE" ~message
-
-let error loc message =
-  Lsp.Types.Diagnostic.create () ~range:(loc_to_range loc) ~severity:Error ~source:"Creusot IDE" ~message
-
-let log_info (n : Jsonrpc2.notify_back) msg = n#send_log_msg ~type_:MessageType.Info msg
-
-type state_after_processing = unit
-
-let process_some_input_file (_file_contents : string) : state_after_processing =
-  ()
-
-let diagnostics (_state : state_after_processing) : Lsp.Types.Diagnostic.t list
-    =
-  []
-
 type revdeps =
   | AllRsFiles  (* The coma and proofs in target/ touch every rs file *)
   | OneFile of DocumentUri.t
@@ -60,10 +37,6 @@ let iter_revdeps uri process =
 class lsp_server =
   object (self)
     inherit Linol_lwt.Jsonrpc2.server as super
-
-    (* one env per document *)
-    val buffers : (Lsp.Types.DocumentUri.t, state_after_processing) Hashtbl.t =
-      Hashtbl.create 32
 
     val rootUri : DocumentUri.t option ref = ref None
     method private mk_relative_path p =
@@ -155,7 +128,7 @@ class lsp_server =
         let () = self#refresh_file ~notify_back ~languageId uri ~content in
         self#update_diagnostics ~notify_back uri
 
-    method private refresh_file ~notify_back ?languageId (uri : DocumentUri.t) ~content =
+    method private refresh_file ~notify_back:_ ?languageId (uri : DocumentUri.t) ~content =
       let path = DocumentUri.to_path uri in
       let rusty = match languageId with
         | Some (Some "rust") -> true
@@ -171,6 +144,7 @@ class lsp_server =
         | _ -> false
       in
       if rusty then (
+        add_rs_file uri;
         let base = Filename.chop_suffix path ".rs" in
         let coma = base ^ ".coma" in
         let proof = Filename.concat base "proof.json" in
@@ -201,8 +175,7 @@ class lsp_server =
 
     (* On document closes, we remove the state associated to the file from the global
        hashtable state, to avoid leaking memory. *)
-    method on_notif_doc_did_close ~notify_back:_ d : unit Linol_lwt.t =
-      Hashtbl.remove buffers d.uri;
+    method on_notif_doc_did_close ~notify_back:_ _ : unit Linol_lwt.t =
       Linol_lwt.return ()
 
     method! config_code_lens_options : CodeLensOptions.t option = Some {
@@ -210,7 +183,7 @@ class lsp_server =
         workDoneProgress = Some false;
       }
 
-    method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
+    method! on_req_code_lens ~notify_back:_ ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
       let path = DocumentUri.to_path uri in
       let lenses = if Filename.check_suffix path ".rs" then
           Creusot_manager.get_rust_lenses uri
@@ -221,7 +194,7 @@ class lsp_server =
 
     method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
 
-    method! on_req_inlay_hint ~notify_back ~id:_ ~uri ~range:_ () =
+    method! on_req_inlay_hint ~notify_back:_ ~id:_ ~uri ~range:_ () =
       let path = DocumentUri.to_path uri in
       if Filename.basename path = "proof.json" then
         let hints = Creusot_manager.get_proof_json_inlay_hints path in

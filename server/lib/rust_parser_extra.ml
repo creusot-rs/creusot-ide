@@ -21,4 +21,7 @@ let string_of_token = function
     | OCTOTHORPE -> "OCTOTHORPE"
     | EQUALS -> "EQUALS"
     | CONST -> "CONST"
+    | AMP -> "AMP"
+    | MUT -> "MUT"
+    | ARROW -> "ARROW"
     | LIFETIME_OR_LABEL s -> Printf.sprintf "LIFETIME_OR_LABEL %s" s
