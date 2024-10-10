@@ -3,20 +3,29 @@ type qualid =
     ; qualifier: string list (* In reverse order (inner modules first) *)
     }
 
-type ty
-  = App of qualid * generic_arg list
+type lifetime = string
+
+type ty =
+  | Const of qualid
+  | App of qualid * generic_arg list
   | Tup of ty list
   | Unit
-and generic_arg
-  = LifetimeArg of string
+  | Ref of lifetime option * ty
+  | Fn of qualid * ty list * ty (* FnMut(t1,t2) -> r *)
+
+and fn_arg =
+  | FnArg of string option * ty
+
+and generic_arg =
+  | LifetimeArg of lifetime
   | TypeArg of ty
 
-type impl_subject
-  = Trait of ty * ty
+type impl_subject =
+  | Trait of ty * ty
   | Inherent of ty
 
-type def_path_item
-  = Impl of impl_subject
+type def_path_item =
+  | Impl of impl_subject
   | Other of string
   | Unknown of string  (* stuff we don't know how to handle yet *)
 

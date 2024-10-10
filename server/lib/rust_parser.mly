@@ -4,6 +4,7 @@
 
 %token <string> IDENT
 %token <string> LIFETIME_OR_LABEL
+%token ARROW
 %token CONST
 %token OCTOTHORPE
 %token LANGLE
@@ -19,8 +20,10 @@
 %token PLUS
 %token EQUALS
 %token QUESTION
+%token AMP
 %token AS
 %token FOR
+%token MUT
 %token WHERE
 %token EOF
 
@@ -45,11 +48,14 @@ ty0:
 | ty EOF { $1 }
 
 ty:
-| qualid { App ($1, []) }
 | UNIT { Unit }
 | t=qualid COLONCOLON? args=generic_args { App (t, args) }
 | LPAR ty RPAR { $2 }
 | LPAR t=ty COMMA ts=separated_list(COMMA, ty) RPAR { Tup (t :: ts) }
+| AMP lf=lifetime? MUT? t=ty { Ref (lf, t) }
+| type_path { $1 }
+
+(* https://doc.rust-lang.org/stable/reference/paths.html *)
 
 (* https://doc.rust-lang.org/stable/reference/paths.html#paths-in-expressions *)
 generic_args:
@@ -124,8 +130,10 @@ attr:
 todo:
 | error { assert false }
 
+(* https://doc.rust-lang.org/stable/reference/paths.html#paths-in-types *)
 type_path:
-| qualid { () }
+| qualid { Const $1 }
+| t=qualid LPAR ts=separated_trailing(COMMA, ty) RPAR ARROW r=ty { Fn(t, ts, r) }
 
 qualid:
 | IDENT { { unqual = $1; qualifier = [] } }
@@ -164,4 +172,7 @@ let string_of_token = function
     | OCTOTHORPE -> "OCTOTHORPE"
     | EQUALS -> "EQUALS"
     | CONST -> "CONST"
+    | AMP -> "AMP"
+    | MUT -> "MUT"
+    | ARROW -> "ARROW"
     | LIFETIME_OR_LABEL s -> Printf.sprintf "LIFETIME_OR_LABEL %s" s

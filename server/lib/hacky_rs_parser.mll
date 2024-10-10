@@ -96,8 +96,10 @@ and rust_lexer end_flag = parse
     | "for" { FOR }
     | "where" { WHERE }
     | "const" { CONST }
+    | "mut" { MUT }
     | '\'' ident { LIFETIME_OR_LABEL (Lexing.lexeme lexbuf) }
     | ident { IDENT (Lexing.lexeme lexbuf) }
+    | '&' { AMP }
     | '=' { EQUALS }
     | '#' { OCTOTHORPE }
     | '<' { LANGLE }
@@ -113,6 +115,7 @@ and rust_lexer end_flag = parse
     | "[" { LBRA }
     | "]" { RBRA }
     | "{" { end_flag := true; EOF }
+    | "->" { ARROW }
     | white+ { line_incs lexbuf; rust_lexer end_flag lexbuf }
 
 {
