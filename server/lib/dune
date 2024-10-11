@@ -24,5 +24,4 @@
 (ocamllex hacky_coma_parser hacky_rs_parser creusot_demangler)
 
 (menhir
- (modules rust_parser_tokens rust_parser)
- (merge_into rust_parser))
+ (modules rust_parser))
