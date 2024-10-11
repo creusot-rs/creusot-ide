@@ -82,6 +82,7 @@ and coma_module_meta state modident loc = parse
     | ' '+ { coma_module_meta state modident loc lexbuf }
     | "[#" string ' '+ (num as start_line) ' '+ (num as start_col) ' '+ (num as end_line) ' '+ (num as end_col) ' '* ']' {
         let loc = relative_loc string start_line start_col end_line end_col lexbuf in
+        new_location (range lexbuf) loc state;
         coma_module_meta state modident (Some loc) lexbuf
     }
     | "[#" [^ '\n' ']']* ']' {
