@@ -1,9 +1,7 @@
 (executable
- (public_name creusot-test)
  (name creusot_test)
  (libraries creusot_lsp why3 linol-lwt lsp logs uri lwt.unix))
 
 (executable
- (public_name why3findtest)
  (name why3findtest)
  (libraries creusot_lsp why3 why3find))
