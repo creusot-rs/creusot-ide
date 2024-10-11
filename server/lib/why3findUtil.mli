@@ -28,6 +28,7 @@ module ProofPath : sig
   val pp_theory : Format.formatter -> theory -> unit
   val pp_goal : Format.formatter -> goal -> unit
   val string_of_goal : goal -> string
+  val short_string_of_goal : goal -> string  (* Only subgoal numbers, no tactic names *)
   val string_of_qualified_goal : qualified_goal -> string
   val qualified_goal_to_json : qualified_goal -> Yojson.Safe.t
   val qualified_goal_of_json : Yojson.Safe.t -> qualified_goal option

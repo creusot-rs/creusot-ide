@@ -29,14 +29,19 @@ module ProofPath = struct
   let force_tactic_path : lazy_tactic_path -> tactic_path =
     List.map @@ fun (tac, i) -> (match !tac with None -> "_" | Some tac -> tac), i
 
-  let pp_tactic_path h =
+  let pp_tactic_path =
     Format.pp_print_list ~pp_sep:Format.pp_print_nothing
-      (fun h (tac, i) -> Format.fprintf h ".%s.%d" tac i) h
+      (fun h (tac, i) -> Format.fprintf h ".%s.%d" tac i)
+
+  let pp_short_tactic =
+    Format.pp_print_list ~pp_sep:Format.pp_print_nothing
+    (fun h (_, i) -> Format.fprintf h ".%d" i)
 
   let pp_goal_ pp_tactic h t =
     Format.fprintf h "%s%a" t.vc pp_tactic t.tactics
 
   let pp_goal = pp_goal_ pp_tactic_path
+  let pp_short_goal = pp_goal_ pp_short_tactic
 
   let pp_info_goals h = Format.pp_print_list (fun h goal -> pp_goal h goal.goal) h
 
@@ -45,6 +50,7 @@ module ProofPath = struct
   let pp_qualified_goal h (t : qualified_goal) = Format.fprintf h "%s:%s:%a" t.file t.theory pp_goal t.goal_info
 
   let string_of_goal = Format.asprintf "%a" pp_goal
+  let short_string_of_goal = Format.asprintf "%a" pp_short_goal
 
   let string_of_qualified_goal = Format.asprintf "%a" pp_qualified_goal
 

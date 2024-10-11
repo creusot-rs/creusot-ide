@@ -438,7 +438,7 @@ let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt 
           ~command:"creusot.showTask"
           ~arguments:[qualified_goal_to_json qualified_goal]
           () in
-        let value = string_of_goal goal in
+        let value = short_string_of_goal goal in
         let label = InlayHintLabelPart.create ~command ~value () in
         let sep = InlayHintLabelPart.create ~value:":" () in
         let label = `List [label; sep] in
