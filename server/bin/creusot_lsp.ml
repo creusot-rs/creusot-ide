@@ -14,6 +14,18 @@ let add_rs_file uri = Hashtbl.replace rs_files uri ()
 
 let is_rs path = Filename.check_suffix path ".rs"
 
+type file_type = Rs | Coma | Proof | Other
+
+let file_type ?language_id path =
+  match language_id with
+  | Some (Some "rust") -> Rs
+  | Some (Some "coma") -> Coma
+  | Some (Some "why3proof") -> Proof
+  | _ when Filename.check_suffix path ".rs" -> Rs
+  | _ when Filename.check_suffix path ".coma" -> Coma
+  | _ when Filename.basename path = "proof.json" -> Proof
+  | _ -> Other
+
 let iter_revdeps uri process =
   match Hashtbl.find_opt revdeps uri with
   | Some AllRsFiles ->
@@ -114,33 +126,27 @@ class lsp_server =
       async_handler @@ fun () ->
         iter_revdeps uri @@ fun uri ->
           notify_back#set_uri uri; (* This is disgusting *)
-          async (self#update_diagnostics ~notify_back uri)
+          let ft = file_type (DocumentUri.to_path uri) in
+          async (self#update_diagnostics ~notify_back ~ft uri)
 
-    method private update_diagnostics ~notify_back uri =
-      let diags = Creusot_manager.get_rust_diagnostics uri in
+    method private update_diagnostics ~notify_back ~ft uri =
+      let diags = match ft with
+        | Rs -> Creusot_manager.get_rust_diagnostics uri
+        | Proof -> Creusot_manager.get_proof_json_diagnostics uri
+        | _ -> [] in
       notify_back#send_diagnostic diags
 
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
         ?languageId
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
-        let () = self#refresh_file ~notify_back ~languageId uri ~content in
-        self#update_diagnostics ~notify_back uri
+        let ft = file_type ~language_id:languageId (DocumentUri.to_path uri) in
+        let () = self#refresh_file ~notify_back ~ft uri ~content in
+        self#update_diagnostics ~notify_back ~ft uri
 
-    method private refresh_file ~notify_back:_ ?languageId (uri : DocumentUri.t) ~content =
+    method private refresh_file ~notify_back:_ ~ft (uri : DocumentUri.t) ~content =
       let path = DocumentUri.to_path uri in
-      let rusty = match languageId with
-        | Some (Some "rust") -> true
-        | _ -> Filename.check_suffix path ".rs"
-      in
-      let coma () = match languageId with
-        | Some (Some "coma") -> true
-        | _ -> Filename.check_suffix path ".coma"
-      in
-      let proof_json () = match languageId with
-        | Some (Some "why3proof") -> true
-        | _ -> Filename.basename path = "proof.json"
-      in
-      if rusty then (
+      match ft with
+      | Rs ->
         add_rs_file uri;
         let base = Filename.chop_suffix path ".rs" in
         let coma = base ^ ".coma" in
@@ -153,11 +159,9 @@ class lsp_server =
           add_revdeps (DocumentUri.of_path proof) (OneFile uri);
         );
         Creusot_manager.rust_file_as_string ~path content
-      ) else if coma () then (
-        ignore (Creusot_manager.coma_file ~uri path)
-      ) else if proof_json () then (
-        Creusot_manager.add_proof_json (String (path, content))
-      )
+      | Coma -> ignore (Creusot_manager.coma_file ~uri path)
+      | Proof -> Creusot_manager.add_proof_json (String (path, content))
+      | Other -> ()
 
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)

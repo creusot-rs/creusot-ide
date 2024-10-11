@@ -56,6 +56,7 @@ val get_rust_diagnostics : DocumentUri.t -> Diagnostic.t list
 
 val add_proof_json : source -> unit
 val get_proof_json_inlay_hints : string -> InlayHint.t list
+val get_proof_json_diagnostics : DocumentUri.t -> Diagnostic.t list
 
 val declare_orphan : string -> unit
 (** Rust files that don't have a crate *)

@@ -447,3 +447,24 @@ let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt 
         )
       );
     !hints
+
+let get_proof_json_diagnostics file : Diagnostic.t list =
+  let file = DocumentUri.to_path file in
+  match Hashtbl.find_opt proof_json_map file with
+  | None -> log Error "diagnostics: %s not found" file; []
+  | Some theories ->
+    let open ProofPath in
+    let diagnostics = ref [] in
+    let add_diagnostic d = diagnostics := d :: !diagnostics in
+    theories |> List.iter (fun theory ->
+      theory.goal_info |> List.iter (fun { goal; goal_range = range; is_null } ->
+        if is_null then
+          add_diagnostic (Diagnostic.create
+            ~range
+            ~source:"Creusot"
+            ~message:(short_string_of_goal goal)
+            ~severity:DiagnosticSeverity.Error
+            ())
+        )
+      );
+      !diagnostics
