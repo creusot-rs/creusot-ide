@@ -1,0 +1,120 @@
+{
+    "scopeName": "source.pearlite",
+    "patterns": [
+        { "include": "#expr" }
+    ],
+    "comment-reference": "https://github.com/dustypomerleau/rust-syntax/blob/main/syntaxes/rust.tmLanguage.json",
+    "repository": {
+        "expr": {
+            "patterns": [
+                { "include": "#keyword" },
+                { "include": "#constructor"},
+                { "include": "#quantifier" },
+                { "include": "#braces" },
+                { "include": "#parentheses" },
+                { "include": "#brackets" },
+                { "include": "#identifier" },
+                { "include": "#number" },
+                { "include": "#special" }
+            ]
+        },
+        "special": {
+            "match": "[@*^]",
+            "name": "keyword.operator"
+        },
+        "keyword": {
+            "match": "\\b(?:if|else|match)\\b",
+            "name": "keyword.control"
+        },
+        "constant": {
+            "match": "\\b(?:true|false)\\b",
+            "name": "constant.language"
+        },
+        "quantifier": {
+            "begin": "(forall|exists)\\s*<",
+            "end":  ">",
+            "beginCaptures": {
+                "1": { "name": "keyword.control" }
+            },
+            "patterns": [
+                { "include": "#type" },
+                { "include": "#identifier" }
+            ]
+        },
+        "braces": {
+            "begin": "{",
+            "end": "}",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.braces.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.braces.end" }
+            },
+            "patterns": [
+                { "include": "#expr" }
+            ]
+        },
+        "parentheses": {
+            "begin": "\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end" }
+            },
+            "patterns": [
+                { "include": "#expr" }
+            ]
+        },
+        "brackets": {
+            "begin": "\\[",
+            "end": "\\]",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.brackets.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.brackets.end" }
+            },
+            "patterns": [
+                { "include": "#expr" }
+            ]
+        },
+        "type": {
+            "patterns": [
+                { "include": "#typename" },
+                { "include": "#stdtype" },
+                { "include": "#generic-type" }
+            ]
+        },
+        "constructor": {
+            "patterns": [ { "include": "#typename" } ]
+        },
+        "typename": {
+            "match": "\\b_?[A-Z][A-Za-z0-9_]*\\b(?!!)",
+            "name": "entity.name.type.rust"
+        },
+        "stdtype": {
+            "match": "(?<![A-Za-z])(?:f32|f64|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize)\\b",
+            "name": "entity.name.type.numeric.rust"
+        },
+        "generic-type": {
+            "begin": "\\b(_?[A-Z][A-Za-z0-9_]*)\\s*<",
+            "end": ">",
+            "beginCaptures": {
+                "1": { "name": "entity.name.type.rust" }
+            },
+            "patterns": [
+                { "include": "#type" }
+            ]
+        },
+        "identifier": {
+            "match": "\\b[a-zA-Z][a-zA-Z0-9_']*\\b",
+            "name": "variable"
+        },
+        "number": {
+            "match": "\\b(?:0x)?[0-9]+\\b",
+            "name": "constant.numeric"
+        }
+    }
+}

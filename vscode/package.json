@@ -60,6 +60,12 @@
       {
         "id": "why3proof",
         "filenames": ["proof.json"]
+      },
+      {
+        "id": "creusot"
+      },
+      {
+        "id": "pearlite"
       }
     ],
     "taskDefinitions": [
@@ -80,6 +86,21 @@
             "language": "coma",
             "scopeName": "source.coma",
             "path": "./syntaxes/coma.json"
+        },
+        {
+            "language": "pearlite",
+            "scopeName": "source.pearlite",
+            "path": "./syntaxes/pearlite.json"
+        },
+        {
+            "scopeName": "source.rust.embedded.creusot",
+            "path": "./syntaxes/creusot-rust.json",
+            "injectTo": ["source.rust"]
+        },
+        {
+            "scopeName": "source.rust.embedded.pearlite",
+            "path": "./syntaxes/pearlite-rust.json",
+            "injectTo": ["source.rust"]
         }
     ]
   },

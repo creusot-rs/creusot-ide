@@ -1,0 +1,30 @@
+{
+    "scopeName": "source.rust.embedded.creusot",
+    "injectionSelector": "L:source.rust -string -comment",
+    "patterns": [
+        {
+            "begin": "#\\[",
+            "end": "\\]",
+            "contentName": "meta.embedded.creusot source.creusot",
+            "patterns": [
+                { "match": "predicate",
+                  "name": "keyword" }
+            ]
+        }
+    ],
+    "repository": {
+        "parentheses": {
+            "begin": "\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end" }
+            },
+            "patterns": [
+                { "include": "#parentheses" }
+            ]
+        }
+    }
+}

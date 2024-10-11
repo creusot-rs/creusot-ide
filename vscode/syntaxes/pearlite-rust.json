@@ -1,0 +1,53 @@
+{
+    "scopeName": "source.rust.embedded.pearlite",
+    "injectionSelector": "L:source.rust -string -comment",
+    "patterns": [
+        {
+            "begin": "\\b(proof_assert|pearlite)\\s*(!)\\s*\\{",
+            "end": "\\}",
+            "contentName": "meta.embedded.macro.proof_assert source.pearlite",
+            "beginCaptures": {
+                "1": { "name": "keyword" },
+                "2": { "name": "keyword" }
+            },
+            "patterns": [
+                { "include": "source.pearlite" }
+            ]
+        },
+        {
+            "begin": "\\b(proof_assert|pearlite)\\s*(!)\\s*\\(",
+            "end": "\\)",
+            "contentName": "meta.embedded.macro.proof_assert source.pearlite",
+            "beginCaptures": {
+                "1": { "name": "keyword" },
+                "2": { "name": "keyword" }
+            },
+            "patterns": [
+                { "include": "source.pearlite" }
+            ]
+        },
+        {
+            "begin": "\\b(proof_assert|pearlite)\\s*(!)\\s*\\[",
+            "end": "\\]",
+            "contentName": "meta.embedded.macro.proof_assert source.pearlite",
+            "beginCaptures": {
+                "1": { "name": "keyword" },
+                "2": { "name": "keyword" }
+            },
+            "patterns": [
+                { "include": "source.pearlite" }
+            ]
+        },
+        {
+            "begin": "\\b(invariant|requires|ensures|variant)\\s*\\(",
+            "end": "\\)",
+            "contentName": "meta.embedded.block.pearlite source.pearlite",
+            "beginCaptures": {
+                "1": { "name": "keyword.control" }
+            },
+            "patterns": [
+                { "include": "source.pearlite" }
+            ]
+        }
+    ]
+}
