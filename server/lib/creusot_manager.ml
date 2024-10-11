@@ -223,7 +223,7 @@ let rust_lexbuf ~path lexbuf =
   | names ->
     let module_ = path |> Filename.basename |> Filename.remove_extension in
     let defns = names |> List.map (fun (def_path, attrs, span) -> (def_path, attrs, span_to_range span)) in
-    Hashtbl.add rust_files path { module_; defns }
+    Hashtbl.replace rust_files path { module_; defns }
   | exception _ -> ()
 
 let rust_file (path : string) : unit =

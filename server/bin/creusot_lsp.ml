@@ -1,8 +1,6 @@
 open Linol_lwt
 open Creusot_lsp
 
-module Log = (val Logs.src_log Logs.Src.(create "creusotlsp"))
-
 type revdeps =
   | AllRsFiles  (* The coma and proofs in target/ touch every rs file *)
   | OneFile of DocumentUri.t
@@ -132,16 +130,15 @@ class lsp_server =
       let path = DocumentUri.to_path uri in
       let rusty = match languageId with
         | Some (Some "rust") -> true
-        | Some _ -> false
-        | None -> Filename.check_suffix path ".rs"
+        | _ -> Filename.check_suffix path ".rs"
       in
       let coma () = match languageId with
         | Some (Some "coma") -> true
-        | _ -> false
+        | _ -> Filename.check_suffix path ".coma"
       in
       let proof_json () = match languageId with
         | Some (Some "why3proof") -> true
-        | _ -> false
+        | _ -> Filename.basename path = "proof.json"
       in
       if rusty then (
         add_rs_file uri;
