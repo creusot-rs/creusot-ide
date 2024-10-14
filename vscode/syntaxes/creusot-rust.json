@@ -8,11 +8,20 @@
             "contentName": "meta.embedded.creusot source.creusot",
             "patterns": [
                 { "match": "predicate",
-                  "name": "keyword" }
+                  "name": "keyword" },
+                { "include": "#paren" },
+                { "include": "#string" }
             ]
         }
     ],
     "repository": {
+        "paren": {
+            "patterns": [
+                { "include": "#parentheses" },
+                { "include": "#brackets" },
+                { "include": "#braces" }
+            ]
+        },
         "parentheses": {
             "begin": "\\(",
             "end": "\\)",
@@ -23,8 +32,45 @@
                 "0": { "name": "punctuation.section.parens.end" }
             },
             "patterns": [
-                { "include": "#parentheses" }
+                { "include": "#paren" }
             ]
+        },
+        "brackets": {
+            "begin": "\\[",
+            "end": "\\]",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.bracket.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.bracket.end" }
+            },
+            "patterns": [
+                { "include": "#paren" }
+            ]
+        },
+        "braces": {
+            "begin": "\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end" }
+            },
+            "patterns": [
+                { "include": "#paren" }
+            ]
+        },
+        "string": {
+            "begin": "\"",
+            "end": "\"",
+            "patterns": [
+                {
+                    "match": "\\\\.",
+                    "name": "constant.character.escape.untitled"
+                }
+            ],
+            "name": "string.quoted.double"
         }
     }
 }
