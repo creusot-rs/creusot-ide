@@ -19,7 +19,7 @@ module State = struct
     }
 end
 
-(* the string is a relative path (relative to the why3session/proof.json) *)
+(* the string is a relative path *)
 let relative_loc string start_line start_col end_line end_col lexbuf =
     let start_line = int_of_string start_line - 1 in
     let start_col = int_of_string start_col in
@@ -28,8 +28,8 @@ let relative_loc string start_line start_col end_line end_col lexbuf =
     let range = Range.create
         ~start:(Position.create ~line:start_line ~character:start_col)
         ~end_:(Position.create ~line:end_line ~character:end_col) in
-    let proofdir = Filename.chop_suffix lexbuf.Lexing.lex_curr_p.pos_fname ".coma" in
-    let uri = DocumentUri.of_path (Filename.concat proofdir string) in
+    let comadir = Filename.dirname lexbuf.Lexing.lex_curr_p.pos_fname in
+    let uri = DocumentUri.of_path (Filename.concat comadir string) in
     Location.create ~uri ~range
 
 let new_state () = State.{ modules = []; locations = [] }
