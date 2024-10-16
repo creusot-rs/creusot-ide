@@ -1,7 +1,80 @@
+diff --git a/lib/session.ml b/lib/session.ml
+index 84e8859..c12c631 100644
+--- a/lib/session.ml
++++ b/lib/session.ml
+@@ -103,11 +103,11 @@ let pp_goal fmt g =
+ 
+ let silent : S.notifier = fun _ -> ()
+ 
+-let result goal prv limit result =
++let result goal prv limits result =
+   match goal with
+   | Task _ -> ()
+   | Snode(s,n,_) ->
+-    let _ = S.graft_proof_attempt s n prv ~limit in
++    let _ = S.graft_proof_attempt s n prv ~limits in
+     S.update_proof_attempt silent s n prv result
+ 
+ let apply env tactic = function
+diff --git a/lib/session.mli b/lib/session.mli
+index f7b900c..147d3ad 100644
+--- a/lib/session.mli
++++ b/lib/session.mli
+@@ -59,7 +59,7 @@ val task_expl : Task.task -> string
+ 
+ val result : goal ->
+   Whyconf.prover ->
+-  Call_provers.resource_limit ->
++  Call_provers.resource_limits ->
+   Call_provers.prover_result ->
+   unit
+ 
 diff --git a/src/runner.ml b/src/runner.ml
-index a4a4c48..601d0df 100644
+index a4a4c48..aa1f543 100644
 --- a/src/runner.ml
 +++ b/src/runner.ml
+@@ -30,7 +30,7 @@ module Call_provers = Why3.Call_provers
+ 
+ type callback =
+   Why3.Whyconf.prover ->
+-  Why3.Call_provers.resource_limit ->
++  Why3.Call_provers.resource_limits ->
+   Why3.Call_provers.prover_result ->
+   unit
+ 
+@@ -331,7 +331,7 @@ module type WRunner = sig
+   type prover_call
+ 
+   val prove_task : command:string -> config:Whyconf.main
+-    -> limit:Call_provers.resource_limit -> Driver.driver -> prepared_task
++    -> limits:Call_provers.resource_limits -> Driver.driver -> prepared_task
+     -> prover_call
+ 
+   val interrupt_call : config:Whyconf.main -> prover_call -> unit
+@@ -344,11 +344,11 @@ module WRunner : WRunner = struct
+ 
+   type prover_call = Call_provers.prover_call
+ 
+-  let prove_task ~command ~config ~limit driver = function
++  let prove_task ~command ~config ~limits driver = function
+     | Prooftask (Prepared task) ->
+-      Driver.prove_task_prepared ~command ~config ~limit driver task
++      Driver.prove_task_prepared ~command ~config ~limits driver task
+     | Buffered buffer ->
+-      Driver.prove_buffer_prepared ~command ~config ~limit driver buffer
++      Driver.prove_buffer_prepared ~command ~config ~limits driver buffer
+ 
+   let interrupt_call ~config c =
+     Call_provers.interrupt_call ~config c
+@@ -370,7 +370,7 @@ module MockRunner : WRunner = struct
+     mutable state : state;
+   }
+ 
+-  let prove_task ~command:_ ~config:_ ~limit:_ _ _ =
++  let prove_task ~command:_ ~config:_ ~limits:_ _ _ =
+     { state = Unstarted }
+ 
+   let interrupt_call ~config:_ c =
 @@ -380,7 +380,7 @@ module MockRunner : WRunner = struct
  
    let interrupted = (* expected answer, see below *)
@@ -11,6 +84,24 @@ index a4a4c48..601d0df 100644
          pr_status = Unix.WEXITED 0 ;
          pr_time = 0. ;
          pr_steps = 0 ;
+@@ -414,7 +414,7 @@ let call_prover (config : Why3.Whyconf.main)
+     ~(prover : Prover.prover)
+     ~(timeout : float) () =
+   let module WRunner = (val !wrunner) in
+-  let limit = limit config timeout in
++  let limits = limit config timeout in
+   let timer = Timer.create () in
+   let clockwall = ref 0.0 in
+   let started = ref false in
+@@ -425,7 +425,7 @@ let call_prover (config : Why3.Whyconf.main)
+   schedule () ;
+   Timer.start launch_proof_timer;
+   let call =
+-    WRunner.prove_task ~config ~limit prover.driver prepared
++    WRunner.prove_task ~config ~limits prover.driver prepared
+       ~command:(Whyconf.get_complete_command prover.config ~with_steps:false)
+   in
+   Timer.stop launch_proof_timer;
 @@ -481,7 +481,7 @@ let call_prover (config : Why3.Whyconf.main)
            Timeout timeout, false
          | Invalid | Unknown _ | OutOfMemory | StepLimitExceeded ->
@@ -20,3 +111,25 @@ index a4a4c48..601d0df 100644
            (if !canceled then NoResult else
             if !timedout then Timeout timeout else
               Failed), false
+@@ -501,7 +501,7 @@ let call_prover (config : Why3.Whyconf.main)
+       begin match callback with
+         | Some cb ->
+           if precise then
+-            notify_pr prover limit pr cb
++            notify_pr prover limits pr cb
+           else
+             notify config prover result cb
+         | None -> ()
+diff --git a/src/runner.mli b/src/runner.mli
+index 3370f41..289d81d 100644
+--- a/src/runner.mli
++++ b/src/runner.mli
+@@ -40,7 +40,7 @@ val to_json : result -> Json.t
+ 
+ type callback =
+   Why3.Whyconf.prover ->
+-  Why3.Call_provers.resource_limit ->
++  Why3.Call_provers.resource_limits ->
+   Why3.Call_provers.prover_result ->
+   unit
+ 
