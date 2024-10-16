@@ -85,6 +85,7 @@ jobs:
       #   if: matrix.code_target != 'no-server'
 
       - run: mkdir dist
+      - run: cp README.md vscode/
 
       - name: Set Version Number
         run: |
