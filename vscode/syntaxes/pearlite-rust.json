@@ -39,6 +39,13 @@
             ]
         },
         {
+            "match": "\\b(proof_assert|pearlite)\\s*(!)",
+            "captures": {
+                "1": { "name": "keyword" },
+                "2": { "name": "keyword" }
+            }
+        },
+        {
             "begin": "\\b(invariant|requires|ensures|variant)\\s*\\(",
             "end": "\\)",
             "contentName": "meta.embedded.block.pearlite source.pearlite",
@@ -48,6 +55,10 @@
             "patterns": [
                 { "include": "source.pearlite" }
             ]
+        },
+        {
+            "match": "\\b(?:invariant|requires|ensures|variant)\\b",
+            "name": "keyword.control"
         }
     ]
 }
