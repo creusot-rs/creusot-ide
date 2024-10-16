@@ -15,7 +15,9 @@
                 { "include": "#brackets" },
                 { "include": "#identifier" },
                 { "include": "#number" },
-                { "include": "#special" }
+                { "include": "#special" },
+                { "include": "#line-comments" },
+                { "include": "#block-comments" }
             ]
         },
         "special": {
@@ -115,6 +117,23 @@
         "number": {
             "match": "\\b(?:0x)?[0-9]+\\b",
             "name": "constant.numeric"
+        },
+        "line-comments": {
+            "match": "//[^\\n]*",
+            "name": "comment.line.double-slash"
+        },
+        "block-comments": {
+            "begin": "/\\*",
+            "end": "\\*/",
+            "beginCaptures": {
+                "0": { "name": "comment.block.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "comment.block.end" }
+            },
+            "patterns": [
+                { "include": "#block-comments" }
+            ]
         }
     }
 }
