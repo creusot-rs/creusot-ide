@@ -33,17 +33,6 @@ let iter_revdeps uri process =
   | Some (OneFile f) -> process f
   | None -> ()
 
-(* Lsp server class
-
-   This is the main point of interaction beetween the code checking documents
-   (parsing, typing, etc...), and the code of linol.
-
-   The [Linol_lwt.Jsonrpc2.server] class defines a method for each of the action
-   that the lsp server receives, such as opening of a document, when a document
-   changes, etc.. By default, the method predefined does nothing (or errors out ?),
-   so that users only need to override methods that they want the server to
-   actually meaningfully interpret and respond to.
-*)
 class lsp_server =
   object (self)
     inherit Linol_lwt.Jsonrpc2.server as super
@@ -64,18 +53,7 @@ class lsp_server =
           let root = DocumentUri.to_path folder.WorkspaceFolder.uri in
           let open Creusot_lsp in
           Creusot_manager.read_cargo ~root;
-          (match Creusot_manager.get_package_name () with
-          | None -> ()
-          | Some crate ->
-            (* Why3session.collect_sessions_for ~root ~crate; *)
-            let (/) = Filename.concat in
-            let global_coma = root / "target" / (crate ^ "-lib.coma") in
-            let global_proof = root / "target" / (crate ^ "-lib") / "proof.json" in
-            if Creusot_manager.coma_file ~uri:(DocumentUri.of_path global_coma) global_coma then (
-              Creusot_manager.add_proof_json (File global_proof);
-              add_revdeps (DocumentUri.of_path global_coma) AllRsFiles;
-              add_revdeps (DocumentUri.of_path global_proof) AllRsFiles)
-          );
+          Creusot_manager.initialize root;
           Lwt.return ()
         | _ -> Lwt.return ()
       in

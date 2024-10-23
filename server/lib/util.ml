@@ -54,3 +54,21 @@ module Async = struct
         | _ -> None)
     }
 end
+
+let walk_dir dir ~exclude =
+  let (/) = Filename.concat in
+  let rec walk acc path =
+    let dir = dir / path in
+    if Sys.is_directory dir then
+      let files = Sys.readdir dir in
+      Array.fold_left (fun acc file -> walk acc (path / file)) acc files
+    else path :: acc
+  in
+  let top = Sys.readdir dir in
+  Array.fold_left (fun acc file ->
+    if List.mem file exclude then acc
+    else walk acc file) [] top
+
+let split_first c s =
+  let i = String.index s c in
+  (String.sub s 0 i, String.sub s (i + 1) (String.length s - i - 1))

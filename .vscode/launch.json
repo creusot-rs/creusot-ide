@@ -11,7 +11,7 @@
 			"outFiles": ["${workspaceRoot}/vscode/out/**/*.js"],
 			"preLaunchTask": "Build Server and Extension",
             "env": {
-                "PATH": "${env:PATH}:${workspaceRoot}/_build/install/default/bin"
+                "PATH": "${workspaceRoot}/_build/install/default/bin:${env:PATH}"
             }
 		},
 	],

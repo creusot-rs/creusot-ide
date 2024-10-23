@@ -36,6 +36,7 @@ type impl_subject =
 
 type def_path_item =
   | Impl of impl_subject
+  | Closure of string
   | Other of string
   | Unknown of string  (* stuff we don't know how to handle yet *)
 

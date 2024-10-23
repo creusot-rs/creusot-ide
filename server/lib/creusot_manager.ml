@@ -83,7 +83,8 @@ let rec insert_trie (trie : trie) (path : Rust_syntax.def_path) (p : loc_ident) 
       | None -> let t = new_trie () in trie.impl_map <- (impl, t) :: trie.impl_map;
                 t in
       insert_trie t rest p
-  | Rust_syntax.Unknown _s :: _rest -> ()
+  | Rust_syntax.Closure _ :: _rest
+  | Rust_syntax.Unknown _ :: _rest -> ()
 
 let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident option =
   match path with
@@ -96,7 +97,8 @@ let rec lookup_trie (trie : trie) (path : Rust_syntax.def_path) : loc_ident opti
         (* log Debug "Unify %a %a" Rust_syntax.fprint_impl_subject i Rust_syntax.fprint_impl_subject impl; *)
         unify_impl_subject impl i) trie.impl_map)
         (fun (_, t) -> lookup_trie t rest)
-  | Rust_syntax.Unknown _s :: _rest -> None
+  | Rust_syntax.Closure _ :: _rest
+  | Rust_syntax.Unknown _ :: _rest -> None
 
 let m = Mutex.create ()
 
@@ -468,3 +470,73 @@ let get_proof_json_diagnostics file : Diagnostic.t list =
         )
       );
       !diagnostics
+
+let top_coma_lexbuf ~uri file lexbuf =
+  let open Lexing in
+  let open Hacky_coma_parser in
+  let open ComaInfo in
+  lexbuf.lex_curr_p <- { lexbuf.lex_curr_p with pos_lnum = 0 };
+  let state = new_state () in
+  match top_coma uri file None state lexbuf with
+  | () ->
+    (match coma state lexbuf with
+    | () ->
+      state.modules |> List.iter (fun mod_info ->
+        insert_demangle mod_info.name.ident mod_info.demangled;
+        insert_def_path mod_info.demangled mod_info.name);
+      ComaInfo.add_file uri { modules = state.State.modules; locations = state.State.locations }
+    | exception e ->
+      let p = lexbuf.lex_curr_p in
+      log Error "Failed to parse coma file %s:%d:%d: %s"
+        p.pos_fname
+        (p.pos_lnum + 1)
+        (p.pos_cnum - p.pos_bol + 1)
+        (Printexc.to_string e))
+  | exception e ->
+    let p = lexbuf.lex_curr_p in
+    log Error "Failed to parse coma file %s:%d:%d: %s"
+      p.pos_fname
+      (p.pos_lnum + 1)
+      (p.pos_cnum - p.pos_bol + 1)
+      (Printexc.to_string e)
+
+let add_coma_file target file =
+  try
+    let (/) = Filename.concat in
+    let path = target / file in
+    let uri = DocumentUri.of_path path in
+    let h = open_in path in
+    let lexbuf = Lexing.from_channel h in
+    Lexing.set_filename lexbuf path;
+    top_coma_lexbuf ~uri file lexbuf;
+    close_in h
+  with
+  | Sys_error _ -> ()
+  | e -> log Error "coma_file: unexpected exception: %s" (Printexc.to_string e)
+
+let add_top_proof_json target file =
+  try
+    let (/) = Filename.concat in
+    let path = target / file in
+    let coma = Filename.dirname file ^ ".coma" in
+    let theories = read_proof_json ~coma:(target / coma) (File path) in
+    theories |> List.iter (fun theory ->
+      if theory.ProofPath.theory <> "Coma" then log Warning "add_top_proof_json: unexpected theory %s, should be \"Coma\"" theory.ProofPath.theory;
+      Hashtbl.replace theory_map coma (path, theory));
+    Hashtbl.replace proof_json_map path theories
+  with
+  | e ->
+    log Error "add_top_proof_json: failed to read %s: %s" file (Printexc.to_string e)
+
+let initialize root =
+  let (/) = Filename.concat in
+  let target = root / "target" / "creusot" in
+  let files = Util.walk_dir target ~exclude:["bin"; "example"; "test"; "benchmark"] in
+  let read file =
+    if Filename.check_suffix file ".coma" then
+      add_coma_file target file
+    else if Filename.basename file = "proof.json" then
+      add_top_proof_json target file
+    else ()
+  in
+  List.iter read files

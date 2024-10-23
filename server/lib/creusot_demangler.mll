@@ -1,64 +1,69 @@
 {
 type segment
     = Impl of string
+    | Closure of string
     | Other of string
 
 let fprint_segment h = function
     | Impl s -> Printf.fprintf h "::impl{%s}" s
+    | Closure s -> Printf.fprintf h "::closure{%s}" s
     | Other s -> Printf.fprintf h "::%s" s
 
 let print_segment = fprint_segment stdout
 
 let print_segments s = List.iter print_segment s; Printf.printf "\n"
-
-type mode
-    = NewSegment of char list
-    | EndSegment
-
-exception DemangleFail
 }
 
-rule demangle_ mode acc = parse
-| "qyi" (['0' - '9']+ as h) {
-    match mode with
-    | NewSegment [] -> demangle_ EndSegment (Impl h :: acc) lexbuf
-    | _ -> failwith "demangle: \"qyi\" in the middle of segment" }
-| "__" {
-    match mode with
-    | NewSegment [] -> failwith "demangle: empty segment"
-    | NewSegment seg -> demangle_ (NewSegment []) (Other (String.of_seq (List.to_seq (List.rev seg))) :: acc) lexbuf
-    | EndSegment -> demangle_ (NewSegment []) acc lexbuf
-}
+rule demangle_segment_ buffer = parse
+| "qyi" (['0' - '9']+ as h) ("__" | eof) { Impl h }
+| "qyClosure" (['0' - '9']+ as i) ("__" | eof) { Closure i }
 | "qy" (['0' - '9']+ as c) "z" {
-    match mode with
-    | EndSegment -> failwith "demangle: \"qy\" after segment"
-    | NewSegment seg ->
-        let c = Char.chr (int_of_string c) in (* TODO: overflow *)
-        demangle_ (NewSegment (c :: seg)) acc lexbuf
+    let c = Char.chr (int_of_string c) in (* TODO: overflow *)
+    Buffer.add_char buffer c;
+    demangle_segment_ buffer lexbuf
 }
 | "qy" { failwith "demangle: unrecognized \"qy\"" }
+| "__" | eof { Other (Buffer.contents buffer) }
 | (_ as c) {
-    match mode with
-    | EndSegment -> failwith "demangle: character after segment"
-    | NewSegment seg -> demangle_ (NewSegment (c :: seg)) acc lexbuf
-}
-| eof {
-    List.rev @@ match mode with
-    | NewSegment [] -> failwith "demangle: empty segment at end of string"
-    | EndSegment -> acc
-    | NewSegment seg -> Other (String.of_seq (List.to_seq (List.rev seg))) :: acc
-}
+    Buffer.add_char buffer c;
+    demangle_segment_ buffer lexbuf }
 
-and demangle0 = parse
-| "M_" { demangle_ (NewSegment []) [] lexbuf }
-| "T_" { demangle_ (NewSegment []) [] lexbuf }
+and demangle_namespace = parse
+| "M_" { "M" }
+| "T_" { "T" }
 
 {
-    let demangle s = try Some (demangle0 (Lexing.from_string s)) with _ -> None
-    let demangle_def_id ?impl s =
+    let demangle_ident0 lexbuf =
+        let ns = demangle_namespace lexbuf in
+        let buffer = Buffer.create 16 in
+        let rec loop acc =
+            if lexbuf.Lexing.lex_eof_reached then List.rev (Other ns :: acc)
+            else
+                let seg = demangle_segment_ buffer lexbuf in
+                Buffer.clear buffer;
+                loop (seg :: acc) in
+        loop []
+
+    let demangle_ident s = try Some (demangle_ident0 (Lexing.from_string s)) with _ -> None
+
+    let demangle_path path =
+        let path = Filename.chop_extension path in
+        let path = String.split_on_char '/' path in
+        let demangle_segment s = demangle_segment_ (Buffer.create 16) (Lexing.from_string s) in
+        try
+            Some (match List.rev path with
+            | last :: rest ->
+                let namespace, last = Util.split_first '_' last in
+                let segs = List.map demangle_segment (last :: rest) in
+                List.rev (Other namespace :: segs)
+            | [] -> [])
+        with _ -> None
+
+    let demangled_def_id ?impl d =
         let of_seg = function
-            | Impl s -> (match impl with Some i -> Rust_syntax.Impl i | None -> failwith "missing impl")
+            | Impl _ -> (match impl with Some i -> Rust_syntax.Impl i | None -> failwith "missing impl")
+            | Closure s -> Rust_syntax.Closure s
             | Other s -> Other s in
-        try Option.map (List.map of_seg) (demangle s) with
+        try Some (List.map of_seg d) with
         | _ -> None
 }

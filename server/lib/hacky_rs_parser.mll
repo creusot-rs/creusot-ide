@@ -40,7 +40,7 @@ let mk_name name =
         | Impl None :: s -> unstack (Rust_syntax.Unknown "impl" :: qname) s
         | Impl (Some impl) :: s -> unstack (Rust_syntax.Impl impl :: qname) s
     in
-    unstack [Other name] !stack
+    unstack [Other name; Other "M"] !stack
 
 let string_of_qname = String.concat "."
 

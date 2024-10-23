@@ -60,3 +60,5 @@ val get_proof_json_diagnostics : DocumentUri.t -> Diagnostic.t list
 
 val declare_orphan : string -> unit
 (** Rust files that don't have a crate *)
+
+val initialize : string -> unit

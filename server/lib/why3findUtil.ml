@@ -238,7 +238,7 @@ let env_ = lazy (
   (match config.packages with
   | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
   | _ -> ());
-  let env = Config.create_env ~config () in
+  let env = Config.create_env ~root:"target/creusot" ~config () in
   Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.wconfig;
   let check_warning w =
     if not (List.mem w config.warnoff) then
@@ -269,24 +269,24 @@ let path_goal ~theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tacti
   path_goal_ theory e g q []
 
 module Wutil = struct
-include Wutil
-open Why3
-    (* modified from why3find without exit *)
-    let load_theories (env : Why3.Env.env) file =
-      let byloc a b =
-        match a.Theory.th_name.id_loc , b.Theory.th_name.id_loc with
-        | None,None -> 0
-        | Some _,None -> (-1)
-        | None,Some _ -> (+1)
-        | Some la, Some lb -> Why3.Loc.compare la lb
-      in
-      try
-        let tmap,format = Why3.Env.(read_file base_language env file) in
-        Some (Wstdlib.Mstr.bindings tmap |> List.map snd |> List.sort byloc , format)
-      with error ->
-        log Error "load_theories: %s" (Printexc.to_string error) ;
-        None
-      end
+  include Wutil
+  open Why3
+  (* modified from why3find without exit *)
+  let load_theories (env : Why3.Env.env) file =
+    let byloc a b =
+      match a.Theory.th_name.id_loc , b.Theory.th_name.id_loc with
+      | None,None -> 0
+      | Some _,None -> (-1)
+      | None,Some _ -> (+1)
+      | Some la, Some lb -> Why3.Loc.compare la lb
+    in
+    try
+      let tmap,format = Why3.Env.(read_file base_language env file) in
+      Some (Wstdlib.Mstr.bindings tmap |> List.map snd |> List.sort byloc , format)
+    with error ->
+      log Error "load_theories: %s" (Printexc.to_string error) ;
+      None
+end
 
 let get_goal (q : qualified_goal) : string option =
   try

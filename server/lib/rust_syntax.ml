@@ -28,6 +28,7 @@ let fprint_impl_subject h = function
 
 let fprint_def_path_item h = function
   | Impl i -> fprintf h "impl{%a}" fprint_impl_subject i
+  | Closure s -> fprintf h "closure{%s}" s
   | Unknown s -> fprintf h "unknown{%s}" s
   | Other s -> fprintf h "%s" s
 

@@ -10,7 +10,7 @@ let%expect_test _ =
 
 let%expect_test _ =
   let open Creusot_demangler in
-  Option.iter print_segments (demangle "M_qyi3__qy65z");
+  Option.iter print_segments (demangle_ident "M_qyi3__qy65z");
   [%expect {|
     ::impl{3}::A
   |}]

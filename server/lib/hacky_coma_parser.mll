@@ -34,12 +34,16 @@ let relative_loc string start_line start_col end_line end_col lexbuf =
 
 let new_state () = State.{ modules = []; locations = [] }
 
-let new_module ?impl name loc state =
+let new_module' ?impl name d loc state =
     let open Creusot_demangler in
     let open State in
-    match demangle_def_id ?impl name.ident with
+    match Option.bind d (demangled_def_id ?impl) with
     | Some demangled -> state.modules <- { name; demangled; loc } :: state.modules
     | None -> ()
+
+let new_module ?impl name loc state =
+    let open Creusot_demangler in
+    new_module' ?impl name (demangle_ident name.ident) loc state
 
 let new_location range loc state =
     let open State in
@@ -96,7 +100,7 @@ and coma_module_meta state modident loc = parse
         | exception _ ->
             new_module modident loc state;
             if !end_flag then coma state lexbuf
-            else coma_module_meta_end state lexbuf }
+            else (coma_module_meta_end state lexbuf; coma state lexbuf) }
     | '\n' {
         (* Nothing right after the module name, go back to main loop *)
         new_line lexbuf;
@@ -107,7 +111,7 @@ and coma_module_meta state modident loc = parse
     }
 
 and coma_module_meta_end state = parse
-    | "*)" { coma state lexbuf }
+    | "*)" { () }
 
 and rust_lexer end_flag = parse
     | "as" { AS } (* reminder: overlaps with ident! *)
@@ -129,6 +133,34 @@ and rust_lexer end_flag = parse
     | "->" { ARROW }
     | "*)" { end_flag := true; EOF }
     | ' '+ { rust_lexer end_flag lexbuf }
+
+and top_coma uri file loc state = parse
+| "(*" ' '* '#' string ' '+ (num as start_line) ' '+ (num as start_col) ' '+ (num as end_line) ' '+ (num as end_col) ' '* "*)" {
+        let loc = relative_loc string start_line start_col end_line end_col lexbuf in
+        new_location (range lexbuf) loc state;
+        top_coma uri file (Some loc) state lexbuf
+}
+| white+ { Util.Lex.line_incs lexbuf; top_coma uri file loc state lexbuf }
+| "(*" ' '* {
+        let end_flag = ref false in
+        let zero_pos = Position.create ~line:0 ~character:0 in
+        let zero_range = Range.create ~start:zero_pos ~end_: zero_pos in
+        let zero_loc = Location.create ~range:zero_range ~uri in
+        let name = { ident = file; loc = zero_loc } in
+        let open Creusot_demangler in
+        match Rust_parser.impl_subject0 (rust_lexer end_flag) lexbuf with
+        | impl ->
+            new_module' ~impl name (demangle_path file) loc state
+        | exception _ ->
+            new_module' name (demangle_path file) loc state;
+            if !end_flag then coma state lexbuf
+            else coma_module_meta_end state lexbuf }
+| _ | eof {
+    let zero_pos = Position.create ~line:0 ~character:0 in
+    let zero_range = Range.create ~start:zero_pos ~end_: zero_pos in
+    let zero_loc = Location.create ~range:zero_range ~uri in
+    let name = { ident = file; loc = zero_loc } in
+    new_module' name (Creusot_demangler.demangle_path file) loc state }
 
 {
 let parse_coma_string str =
