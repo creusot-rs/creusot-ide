@@ -244,6 +244,7 @@ let load_plugins =
     )
 
 let load_config =
+  let lazy_config = lazy (
   let config = Config.load_config "." in
   (match config.packages with
   | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
@@ -257,7 +258,8 @@ let load_config =
   List.iter (fun unwarn ->
     Why3.Loc.disable_warning @@ Why3.Loc.register_warning unwarn Why3.Pp.empty_formatted)
     ("unused_variable" :: "axiom_abstract" :: config.warnoff);
-  fun () -> config
+  config) in
+  fun () -> Lazy.force lazy_config
 
 let get_env load_path =
   let config = load_config () in
@@ -301,17 +303,19 @@ module Wutil = struct
       None
 end
 
-let rec guess_load_path (file : string) : string =
-  let parent = Filename.dirname file in
-  if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
-    file
+let rec guess_load_path (file : string) : string option =
+  if file = "." || file = "/" then None
   else
-    guess_load_path parent
+    let parent = Filename.dirname file in
+    if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
+      Some file
+    else
+      guess_load_path parent
 
 let get_goal (q : qualified_goal) : string option =
   try
     let session = true in
-    let load_path = guess_load_path q.file in
+    let load_path = match guess_load_path q.file with Some load_path -> load_path | None -> "." in
     let env = get_env load_path in
     let file = q.file in
     let dir, _lib = Wutil.filepath file in

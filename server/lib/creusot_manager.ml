@@ -413,13 +413,15 @@ let get_rust_diagnostics uri =
   let info = get_rust_info ~package:(crate_of path) ~path in
   info.inline_items |> List.concat_map to_lsp_diagnostics
 
-let guess_crate_dir (file : string) : string * string * string =
+let guess_crate_dir (file : string) : (string * string * string) option =
   let rec guess acc file =
-    let parent = Filename.dirname file in
-    if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
-      (parent, Filename.basename file, String.concat "/" acc)
+    if file = "." || file = "/" then None
     else
-      guess (Filename.basename file :: acc) parent
+      let parent = Filename.dirname file in
+      if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
+        Some (parent, Filename.basename file, String.concat "/" acc)
+      else
+        guess (Filename.basename file :: acc) parent
   in guess [] file
 
 let add_proof_json src =
@@ -543,7 +545,7 @@ let is_primary ~target_dir root_crate crate_type file =
 let add_coma_file uri =
   try
     let path = DocumentUri.to_path uri in
-    let target_dir, crate_dir, file = guess_crate_dir path in
+    let target_dir, crate_dir, file = match guess_crate_dir path with Some t -> t | None -> failwith ("could not guess crate for " ^ path) in
     let root_crate, crate_type = split_last '-' crate_dir in
     let primary = is_primary ~target_dir root_crate crate_type file in
     add_coma_file' ~primary uri file
