@@ -22,6 +22,10 @@ type ty =
   | Unit
   | Ref of lifetime option * ty
   | Fn of qualid * ty list * ty (* FnMut(t1,t2) -> r *)
+  | QualifiedPath of qualified_path_type * string list
+
+and qualified_path_type =
+  | QualifiedPathType of ty * ty option
 
 and fn_arg =
   | FnArg of string option * ty

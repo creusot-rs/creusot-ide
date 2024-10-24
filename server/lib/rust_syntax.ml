@@ -18,6 +18,12 @@ let rec fprint_ty h = function
   | Ref (None, t) -> fprintf h "&%a" fprint_ty t
   | Ref (Some l, t) -> fprintf h "&%s %a" l fprint_ty t
   | Fn (q, ts, r) -> fprintf h "%a(%a) -> %a" fprint_qualid q (fprint_list fprint_ty ", ") ts fprint_ty r
+  | QualifiedPath (t, ts) -> fprintf h "%a::%a" fprint_qualified_path_type t (fprint_list pp_print_string "::") ts
+
+and fprint_qualified_path_type h = function
+  | QualifiedPathType (t, None) -> fprintf h "<%a>" fprint_ty t
+  | QualifiedPathType (t, Some p) -> fprintf h "<%a as %a>" fprint_ty t fprint_ty p
+
 and fprint_generic_arg h = function
   | LifetimeArg l -> fprintf h "%s" l
   | TypeArg t -> fprint_ty h t

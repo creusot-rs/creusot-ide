@@ -35,6 +35,7 @@ ty:
 | LPAR t=ty COMMA ts=separated_list(COMMA, ty) RPAR { Tup (t :: ts) }
 | AMP lf=lifetime? MUT? t=ty { Ref (lf, t) }
 | type_path { $1 }
+| qualified_path_in_type { $1}
 
 (* https://doc.rust-lang.org/stable/reference/paths.html *)
 
@@ -107,6 +108,13 @@ outer_attribute:
 
 attr:
 | error { failwith "attributes parser not implemented" }
+
+(* https://doc.rust-lang.org/stable/reference/paths.html#qualified-paths *)
+qualified_path_in_type:
+| t=qualified_path_type COLONCOLON ts=separated_list(COLONCOLON, IDENT) { QualifiedPath (t, ts) }
+
+qualified_path_type:
+| LANGLE t=qualid p=preceded(AS, qualid) RANGLE { QualifiedPathType (Const t, Some (Const p)) }
 
 (* https://doc.rust-lang.org/stable/reference/paths.html#paths-in-types *)
 type_path:
