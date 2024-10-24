@@ -95,10 +95,20 @@ class lsp_server =
           async (self#update_diagnostics ~notify_back ~ft uri)
 
     method private update_diagnostics ~notify_back ~ft uri =
-      let diags = match ft with
-        | Rs -> Creusot_manager.get_rust_diagnostics uri
-        | Proof -> Creusot_manager.get_proof_json_diagnostics uri
-        | _ -> [] in
+      let* diags = match ft with
+        | Rs ->
+          let* _ =
+            let items = Creusot_manager.get_rust_test_items (DocumentUri.to_path uri) in
+            let items = List.map Test_api.yojson_of_test_item items in
+            notify_back#send_notification (Lsp.Server_notification.UnknownNotification
+              (Jsonrpc.Notification.create
+                ~method_:"creusot/testitems"
+                ~params:(Jsonrpc.Structured.t_of_yojson (`List [`String (DocumentUri.to_string uri); `List items]))
+                ()))
+          in
+          return (Creusot_manager.get_rust_diagnostics uri)
+        | Proof -> return (Creusot_manager.get_proof_json_diagnostics uri)
+        | _ -> return [] in
       notify_back#send_diagnostic diags
 
     method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
@@ -181,8 +191,8 @@ class lsp_server =
         match req with
         | None -> Lwt.return `Null (* error *)
         | Some req ->
-          let arg = Jsonrpc.Structured.yojson_of_t req in
-          match Why3findUtil.ProofPath.qualified_goal_of_json arg with
+          let req = Jsonrpc.Structured.yojson_of_t req in
+          match Why3findUtil.ProofPath.qualified_goal_of_json req with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
             let goal = Why3findUtil.get_goal path in

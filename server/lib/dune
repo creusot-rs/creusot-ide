@@ -15,10 +15,12 @@
   jsonm
   lwt.unix
   ppx_deriving
+  ppx_yojson_conv
+  ppx_yojson_conv_lib
   xmlm)
  (inline_tests)
  (preprocess
-  (pps ppx_deriving.show ppx_expect))
+  (pps ppx_deriving.show ppx_expect ppx_yojson_conv))
  (modules_without_implementation types))
 
 (ocamllex hacky_coma_parser hacky_rs_parser creusot_demangler)

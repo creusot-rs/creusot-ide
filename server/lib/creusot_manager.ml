@@ -257,7 +257,7 @@ module RustInfo = struct
     | Qed
     | ToProve of (string * Location.t) array
   type item = {
-    name: string; (* for debugging *)
+    name: string;
     range: Range.t;
     to_coma: Location.t;
     status: status;
@@ -412,6 +412,15 @@ let get_rust_diagnostics uri =
   let path = DocumentUri.to_path uri in
   let info = get_rust_info ~package:(crate_of path) ~path in
   info.inline_items |> List.concat_map to_lsp_diagnostics
+
+let get_rust_test_items path =
+  let info = get_rust_info ~package:(crate_of path) ~path in
+  info.inline_items |> List.map (fun item ->
+    let open RustInfo in
+    let id = DocumentUri.to_path item.to_coma.uri in
+    let label = item.name in
+    let range = item.range in
+    Test_api.{ id; label; range })
 
 let guess_crate_dir (file : string) : (string * string * string) option =
   let rec guess acc file =
