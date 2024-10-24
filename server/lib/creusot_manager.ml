@@ -413,18 +413,27 @@ let get_rust_diagnostics uri =
   let info = get_rust_info ~package:(crate_of path) ~path in
   info.inline_items |> List.concat_map to_lsp_diagnostics
 
+let guess_crate_dir (file : string) : string * string * string =
+  let rec guess acc file =
+    let parent = Filename.dirname file in
+    if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
+      (parent, Filename.basename file, String.concat "/" acc)
+    else
+      guess (Filename.basename file :: acc) parent
+  in guess [] file
+
 let add_proof_json src =
+  let path = file_of_source src in
+  let coma = Filename.dirname path ^ ".coma" in
   try
-    let file = file_of_source src in
-    let coma = Filename.dirname file ^ ".coma" in
     let theories = read_proof_json ~coma src in
     theories |> List.iter (fun theory ->
-      Hashtbl.replace theory_map theory.ProofPath.theory (file, theory));
-    Hashtbl.replace proof_json_map (file_of_source src) theories
+      if theory.ProofPath.theory <> "Coma" then log Warning "add_top_proof_json: unexpected theory %s, should be \"Coma\"" theory.ProofPath.theory;
+      Hashtbl.replace theory_map coma (path, theory));
+    Hashtbl.replace proof_json_map path theories
   with
   | e ->
-    let file = match src with File file | String (file, _) -> file in
-    log Error "add_proof_json: failed to read %s: %s" file (Printexc.to_string e)
+    log Error "add_top_proof_json: failed to read %s: %s" path (Printexc.to_string e)
 
 let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt proof_json_map file with
   | None -> log Error "hints: %s not found" file; []
@@ -531,15 +540,6 @@ let is_primary ~target_dir root_crate crate_type file =
     crate = root_crate && (crate_type = "rlib" || (crate_type = "bin" && only_crate crate))
   with Not_found -> false
 
-let guess_crate_dir (file : string) : string * string * string =
-  let rec guess acc file =
-    let parent = Filename.dirname file in
-    if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
-      (parent, Filename.basename file, String.concat "/" acc)
-    else
-      guess (Filename.basename file :: acc) parent
-  in guess [] file
-
 let add_coma_file uri =
   try
     let path = DocumentUri.to_path uri in
@@ -549,20 +549,6 @@ let add_coma_file uri =
     add_coma_file' ~primary uri file
   with
   | e -> log Error "add_coma_file: unexpected exception: %s" (Printexc.to_string e)
-
-let add_top_proof_json target file =
-  try
-    let (/) = Filename.concat in
-    let path = target / file in
-    let coma = Filename.dirname file ^ ".coma" in
-    let theories = read_proof_json ~coma:(target / coma) (File path) in
-    theories |> List.iter (fun theory ->
-      if theory.ProofPath.theory <> "Coma" then log Warning "add_top_proof_json: unexpected theory %s, should be \"Coma\"" theory.ProofPath.theory;
-      Hashtbl.replace theory_map coma (path, theory));
-    Hashtbl.replace proof_json_map path theories
-  with
-  | e ->
-    log Error "add_top_proof_json: failed to read %s: %s" file (Printexc.to_string e)
 
 let initialize root =
   let (/) = Filename.concat in
@@ -574,12 +560,12 @@ let initialize root =
       let target_crate_dir = target_dir / crate_dir in
       let files = Util.walk_dir target_crate_dir in
       let read file =
+        let path = target_crate_dir / file in
         if Filename.check_suffix file ".coma" then
           let primary = is_primary ~target_dir crate crate_type file in
-          let uri = DocumentUri.of_path (target_crate_dir / file) in
-          add_coma_file' ~primary uri file
+          add_coma_file' ~primary (DocumentUri.of_path path) file
         else if Filename.basename file = "proof.json" then
-          add_top_proof_json target_crate_dir file
+          add_proof_json (File path)
         else ()
       in
       List.iter read files

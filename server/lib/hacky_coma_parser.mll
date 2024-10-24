@@ -146,7 +146,7 @@ and top_coma uri file loc state = parse
         let zero_pos = Position.create ~line:0 ~character:0 in
         let zero_range = Range.create ~start:zero_pos ~end_: zero_pos in
         let zero_loc = Location.create ~range:zero_range ~uri in
-        let name = { ident = file; loc = zero_loc } in
+        let name = { ident = DocumentUri.to_path uri; loc = zero_loc } in
         let open Creusot_demangler in
         match Rust_parser.impl_subject0 (rust_lexer end_flag) lexbuf with
         | impl ->
@@ -159,7 +159,7 @@ and top_coma uri file loc state = parse
     let zero_pos = Position.create ~line:0 ~character:0 in
     let zero_range = Range.create ~start:zero_pos ~end_: zero_pos in
     let zero_loc = Location.create ~range:zero_range ~uri in
-    let name = { ident = file; loc = zero_loc } in
+    let name = { ident = DocumentUri.to_path uri; loc = zero_loc } in
     new_module' name (Creusot_demangler.demangle_path file) loc state }
 
 {
