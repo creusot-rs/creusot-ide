@@ -57,6 +57,36 @@ function registerCommand(context: ExtensionContext, name: string, cmd: (...args:
     context.subscriptions.push(disposable)
 }
 
+function createTests() {
+    const controller = vscode.tests.createTestController(
+  'helloWorldTests',
+  'Hello World Tests'
+);
+    const test = controller.createTestItem("test1", "Test 1", Uri.parse("file:///home/sam/testproject/src/test1.rs"));
+    test.range = new Range(4, 7, 4, 14);
+    controller.items.add(test);
+
+    function runHandler(request: vscode.TestRunRequest, cancellation: vscode.CancellationToken) {
+        const run = controller.createTestRun(request);
+        if (request.include) {
+            for (const test of request.include) {
+                if (cancellation.isCancellationRequested) {
+                    break;
+                }
+                run.enqueued(test);
+                run.started(test);
+                run.appendOutput(`Starting test ${test.label}\n`);
+                setTimeout(() => {
+                    run.appendOutput(`Finishing test ${test.label}\n`);
+                    run.passed(test);
+                }, 1000);
+            }
+        }
+        run.end();
+    }
+    const runProfile = controller.createRunProfile("Run", vscode.TestRunProfileKind.Run, runHandler);
+}
+
 export function activate(context: ExtensionContext) {
     /* Basic system commands */
     registerCommand(context, "creusot.openFile", async (file) => {
@@ -139,4 +169,6 @@ export function activate(context: ExtensionContext) {
         vscode.languages.setTextDocumentLanguage(doc, "coma");
         await vscode.window.showTextDocument(doc, { preview: false });
     });
+
+    createTests();
 }
