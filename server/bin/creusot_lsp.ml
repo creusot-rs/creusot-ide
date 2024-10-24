@@ -94,7 +94,7 @@ class lsp_server =
           else if base = "proof.json" then
             Creusot_manager.add_proof_json (File path)
           else if Filename.check_suffix base ".coma" then
-            ignore (Creusot_manager.coma_file ~uri:change.uri path);
+            Creusot_manager.add_coma_file change.uri;
           self#refresh_all ~notify_back change.uri
       | _ -> Lwt.return ()
 
@@ -130,14 +130,15 @@ class lsp_server =
         let coma = base ^ ".coma" in
         let proof = Filename.concat base "proof.json" in
         (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
-        if Creusot_manager.coma_file ~uri:(DocumentUri.of_path coma) coma then (
+        if Sys.file_exists coma then (
+          Creusot_manager.add_coma_file (DocumentUri.of_path coma);
           Creusot_manager.declare_orphan path;
           Creusot_manager.add_proof_json (File proof);
           add_revdeps (DocumentUri.of_path coma) (OneFile uri);
           add_revdeps (DocumentUri.of_path proof) (OneFile uri);
         );
         Creusot_manager.rust_file_as_string ~path content
-      | Coma -> ignore (Creusot_manager.coma_file ~uri path)
+      | Coma -> Creusot_manager.add_coma_file uri
       | Proof -> Creusot_manager.add_proof_json (String (path, content))
       | Other -> ()
 

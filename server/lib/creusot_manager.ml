@@ -471,7 +471,7 @@ let get_proof_json_diagnostics file : Diagnostic.t list =
       );
       !diagnostics
 
-let top_coma_lexbuf ~uri file lexbuf =
+let top_coma_lexbuf ~primary ~uri file lexbuf =
   let open Lexing in
   let open Hacky_coma_parser in
   let open ComaInfo in
@@ -481,9 +481,11 @@ let top_coma_lexbuf ~uri file lexbuf =
   | () ->
     (match coma state lexbuf with
     | () ->
-      state.modules |> List.iter (fun mod_info ->
-        insert_demangle mod_info.name.ident mod_info.demangled;
-        insert_def_path mod_info.demangled mod_info.name);
+      if primary then (
+        state.modules |> List.iter (fun mod_info ->
+          insert_demangle mod_info.name.ident mod_info.demangled;
+          insert_def_path mod_info.demangled mod_info.name);
+      );
       ComaInfo.add_file uri { modules = state.State.modules; locations = state.State.locations }
     | exception e ->
       let p = lexbuf.lex_curr_p in
@@ -500,19 +502,53 @@ let top_coma_lexbuf ~uri file lexbuf =
       (p.pos_cnum - p.pos_bol + 1)
       (Printexc.to_string e)
 
-let add_coma_file target file =
+let add_coma_file' ~primary uri file =
   try
-    let (/) = Filename.concat in
-    let path = target / file in
-    let uri = DocumentUri.of_path path in
+    let path = DocumentUri.to_path uri in
     let h = open_in path in
     let lexbuf = Lexing.from_channel h in
     Lexing.set_filename lexbuf path;
-    top_coma_lexbuf ~uri file lexbuf;
+    top_coma_lexbuf ~primary ~uri file lexbuf;
     close_in h
   with
   | Sys_error _ -> ()
-  | e -> log Error "coma_file: unexpected exception: %s" (Printexc.to_string e)
+  | e -> log Error "add_coma_file': unexpected exception: %s" (Printexc.to_string e)
+
+(* If we have both a lib and a binary crate with the same name,
+   we want to link to the lib. *)
+let is_primary ~target_dir root_crate crate_type file =
+  let only_crate crate =
+    let topdirs = Sys.readdir target_dir in
+    let is_homonym dir =
+      try
+        let crate', crate_type' = split_last '-' dir in
+        crate = crate' && crate_type <> crate_type'
+      with Not_found -> false in
+    List.exists is_homonym (Array.to_list topdirs)
+  in
+  try
+    let crate, _ = split_first '/' file in
+    crate = root_crate && (crate_type = "rlib" || (crate_type = "bin" && only_crate crate))
+  with Not_found -> false
+
+let guess_crate_dir (file : string) : string * string * string =
+  let rec guess acc file =
+    let parent = Filename.dirname file in
+    if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
+      (parent, Filename.basename file, String.concat "/" acc)
+    else
+      guess (Filename.basename file :: acc) parent
+  in guess [] file
+
+let add_coma_file uri =
+  try
+    let path = DocumentUri.to_path uri in
+    let target_dir, crate_dir, file = guess_crate_dir path in
+    let root_crate, crate_type = split_last '-' crate_dir in
+    let primary = is_primary ~target_dir root_crate crate_type file in
+    add_coma_file' ~primary uri file
+  with
+  | e -> log Error "add_coma_file: unexpected exception: %s" (Printexc.to_string e)
 
 let add_top_proof_json target file =
   try
@@ -530,13 +566,21 @@ let add_top_proof_json target file =
 
 let initialize root =
   let (/) = Filename.concat in
-  let target = root / "target" / "creusot" in
-  let files = Util.walk_dir target ~exclude:["bin"; "example"; "test"; "benchmark"] in
-  let read file =
-    if Filename.check_suffix file ".coma" then
-      add_coma_file target file
-    else if Filename.basename file = "proof.json" then
-      add_top_proof_json target file
-    else ()
-  in
-  List.iter read files
+  let target_dir = root / "target" / "creusot" in
+  let crates = try Sys.readdir target_dir with _ -> [||] in
+  crates |> Array.iter @@ fun crate_dir ->
+    try
+      let crate, crate_type = split_last '-' crate_dir in
+      let target_crate_dir = target_dir / crate_dir in
+      let files = Util.walk_dir target_crate_dir in
+      let read file =
+        if Filename.check_suffix file ".coma" then
+          let primary = is_primary ~target_dir crate crate_type file in
+          let uri = DocumentUri.of_path (target_crate_dir / file) in
+          add_coma_file' ~primary uri file
+        else if Filename.basename file = "proof.json" then
+          add_top_proof_json target_crate_dir file
+        else ()
+      in
+      List.iter read files
+    with Not_found -> ()

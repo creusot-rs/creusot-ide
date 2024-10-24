@@ -19,5 +19,6 @@ end
 
 (* List files in a directory recursively, excluding some toplevel directories.
    Return paths relative to the input directory. *)
-val walk_dir : string -> exclude:string list -> string list
+val walk_dir : ?exclude:string list -> string -> string list
 val split_first : char -> string -> string * string
+val split_last : char -> string -> string * string

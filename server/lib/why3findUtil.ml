@@ -233,13 +233,21 @@ let read_proof_json ~coma source : theory list =
   let decoder = Jsonm.decoder source in
   parse_json_list ~coma decoder
 
-let env_ = lazy (
+(* Why3.Whyconf.load_plugins can only be called once.
+   Hope that it doesn't depend on the loadpath which is going to vary. *)
+let load_plugins =
+  let once = ref true in
+  fun env ->
+    if !once then (
+      once := false;
+      Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.Config.wconfig
+    )
+
+let load_config =
   let config = Config.load_config "." in
   (match config.packages with
   | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
   | _ -> ());
-  let env = Config.create_env ~root:"target/creusot" ~config () in
-  Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.wconfig;
   let check_warning w =
     if not (List.mem w config.warnoff) then
       log Warning "Disable warning \"%s\" in why3config.json, otherwise Why3 may produce lots of warnings on Creusot-generated code" w
@@ -249,9 +257,14 @@ let env_ = lazy (
   List.iter (fun unwarn ->
     Why3.Loc.disable_warning @@ Why3.Loc.register_warning unwarn Why3.Pp.empty_formatted)
     ("unused_variable" :: "axiom_abstract" :: config.warnoff);
-  env)
+  fun () -> config
 
-let get_env () = Lazy.force env_
+let get_env load_path =
+  let config = load_config () in
+  let config = { config with library = Some load_path } in
+  let env = Config.create_env ~config () in
+  load_plugins env;
+  env
 
 let rec path_goal_ theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_path) breadcrumbs : Session.goal option =
   match q with
@@ -288,10 +301,18 @@ module Wutil = struct
       None
 end
 
+let rec guess_load_path (file : string) : string =
+  let parent = Filename.dirname file in
+  if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
+    file
+  else
+    guess_load_path parent
+
 let get_goal (q : qualified_goal) : string option =
   try
     let session = true in
-    let env = get_env () in
+    let load_path = guess_load_path q.file in
+    let env = get_env load_path in
     let file = q.file in
     let dir, _lib = Wutil.filepath file in
     let (let+) = Option.bind in
