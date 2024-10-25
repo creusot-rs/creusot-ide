@@ -261,9 +261,8 @@ let load_config =
   config) in
   fun () -> Lazy.force lazy_config
 
-let get_env load_path =
+let get_env () =
   let config = load_config () in
-  let config = { config with library = Some load_path } in
   let env = Config.create_env ~config () in
   load_plugins env;
   env
@@ -303,20 +302,10 @@ module Wutil = struct
       None
 end
 
-let rec guess_load_path (file : string) : string option =
-  if file = "." || file = "/" then None
-  else
-    let parent = Filename.dirname file in
-    if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
-      Some file
-    else
-      guess_load_path parent
-
 let get_goal (q : qualified_goal) : string option =
   try
     let session = true in
-    let load_path = match guess_load_path q.file with Some load_path -> load_path | None -> "." in
-    let env = get_env load_path in
+    let env = get_env () in
     let file = q.file in
     let dir, _lib = Wutil.filepath file in
     let (let+) = Option.bind in

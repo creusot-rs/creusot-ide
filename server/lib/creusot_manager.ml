@@ -418,7 +418,7 @@ let guess_crate_dir (file : string) : (string * string * string) option =
     if file = "." || file = "/" then None
     else
       let parent = Filename.dirname file in
-      if Filename.basename parent = "creusot" && Filename.(basename (dirname parent) = "target") then
+      if Filename.basename parent = "verif" then
         Some (parent, Filename.basename file, String.concat "/" acc)
       else
         guess (Filename.basename file :: acc) parent
@@ -532,7 +532,7 @@ let is_primary ~target_dir root_crate crate_type file =
     let topdirs = Sys.readdir target_dir in
     let is_homonym dir =
       try
-        let crate', crate_type' = split_last '-' dir in
+        let crate', crate_type' = split_last '_' dir in
         crate = crate' && crate_type <> crate_type'
       with Not_found -> false in
     List.exists is_homonym (Array.to_list topdirs)
@@ -546,7 +546,7 @@ let add_coma_file uri =
   try
     let path = DocumentUri.to_path uri in
     let target_dir, crate_dir, file = match guess_crate_dir path with Some t -> t | None -> failwith ("could not guess crate for " ^ path) in
-    let root_crate, crate_type = split_last '-' crate_dir in
+    let root_crate, crate_type = split_last '_' crate_dir in
     let primary = is_primary ~target_dir root_crate crate_type file in
     add_coma_file' ~primary uri file
   with
@@ -554,11 +554,11 @@ let add_coma_file uri =
 
 let initialize root =
   let (/) = Filename.concat in
-  let target_dir = root / "target" / "creusot" in
+  let target_dir = root / "verif" in
   let crates = try Sys.readdir target_dir with _ -> [||] in
   crates |> Array.iter @@ fun crate_dir ->
     try
-      let crate, crate_type = split_last '-' crate_dir in
+      let crate, crate_type = split_last '_' crate_dir in
       let target_crate_dir = target_dir / crate_dir in
       let files = Util.walk_dir target_crate_dir in
       let read file =
