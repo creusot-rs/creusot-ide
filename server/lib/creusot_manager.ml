@@ -482,6 +482,19 @@ let get_proof_json_diagnostics file : Diagnostic.t list =
       );
       !diagnostics
 
+let revdeps : (string, DocumentUri.t) Hashtbl.t = Hashtbl.create 16
+
+let add_revdeps = Hashtbl.replace revdeps
+let lookup_revdeps = Hashtbl.find_opt revdeps
+
+let get_revdep uri =
+  let path = DocumentUri.to_path uri in
+  let open Filename in
+  if basename path = "proof.json" then
+    lookup_revdeps (dirname path ^ ".coma")
+  else
+    lookup_revdeps path
+
 let top_coma_lexbuf ~primary ~uri file lexbuf =
   let open Lexing in
   let open Hacky_coma_parser in
@@ -490,6 +503,11 @@ let top_coma_lexbuf ~primary ~uri file lexbuf =
   let state = new_state () in
   match top_coma uri file None state lexbuf with
   | () ->
+    if primary then (
+      match state.locations with
+      | (_, loc) :: _ -> add_revdeps (DocumentUri.to_path uri) loc.uri
+      | [] -> ()
+    );
     (match coma state lexbuf with
     | () ->
       if primary then (

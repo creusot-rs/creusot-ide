@@ -1,18 +1,10 @@
 open Linol_lwt
 open Creusot_lsp
 
-type revdeps =
-  | AllRsFiles  (* The coma and proofs in target/ touch every rs file *)
-  | OneFile of DocumentUri.t
-
-let revdeps : (DocumentUri.t, revdeps) Hashtbl.t = Hashtbl.create 16
 let rs_files : (DocumentUri.t, unit) Hashtbl.t = Hashtbl.create 16
 
 (* Given a .coma or proof.json, what .rs files have diagnostics that depend on it *)
-let add_revdeps uri d = Hashtbl.replace revdeps uri d
 let add_rs_file uri = Hashtbl.replace rs_files uri ()
-
-let is_rs path = Filename.check_suffix path ".rs"
 
 type file_type = Rs | Coma | Proof | Other
 
@@ -25,13 +17,6 @@ let file_type ?language_id path =
   | _ when Filename.check_suffix path ".coma" -> Coma
   | _ when Filename.basename path = "proof.json" -> Proof
   | _ -> Other
-
-let iter_revdeps uri process =
-  match Hashtbl.find_opt revdeps uri with
-  | Some AllRsFiles ->
-    Hashtbl.iter (fun name () -> if is_rs (DocumentUri.to_path name) then process name) rs_files
-  | Some (OneFile f) -> process f
-  | None -> ()
 
 class lsp_server =
   object (self)
@@ -102,7 +87,9 @@ class lsp_server =
       let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _result -> Lwt.return ()) in
       let open Util.Async in
       async_handler @@ fun () ->
-        iter_revdeps uri @@ fun uri ->
+        match Creusot_manager.get_revdep uri with
+        | None -> ()
+        | Some uri ->
           notify_back#set_uri uri; (* This is disgusting *)
           let ft = file_type (DocumentUri.to_path uri) in
           async (self#update_diagnostics ~notify_back ~ft uri)
@@ -134,8 +121,6 @@ class lsp_server =
           Creusot_manager.add_coma_file (DocumentUri.of_path coma);
           Creusot_manager.declare_orphan path;
           Creusot_manager.add_proof_json (File proof);
-          add_revdeps (DocumentUri.of_path coma) (OneFile uri);
-          add_revdeps (DocumentUri.of_path proof) (OneFile uri);
         );
         Creusot_manager.rust_file_as_string ~path content
       | Coma -> Creusot_manager.add_coma_file uri

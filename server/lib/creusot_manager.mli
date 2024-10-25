@@ -63,3 +63,5 @@ val declare_orphan : string -> unit
 
 val add_coma_file : DocumentUri.t -> unit
 val initialize : string -> unit
+
+val get_revdep : DocumentUri.t -> DocumentUri.t option

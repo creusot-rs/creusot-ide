@@ -19,8 +19,8 @@ module State = struct
     }
 end
 
-(* the string is a relative path *)
-let relative_loc string start_line start_col end_line end_col lexbuf =
+(* the string is an absolute path *)
+let absolute_loc string start_line start_col end_line end_col =
     let start_line = int_of_string start_line - 1 in
     let start_col = int_of_string start_col in
     let end_line = int_of_string end_line - 1 in
@@ -28,8 +28,7 @@ let relative_loc string start_line start_col end_line end_col lexbuf =
     let range = Range.create
         ~start:(Position.create ~line:start_line ~character:start_col)
         ~end_:(Position.create ~line:end_line ~character:end_col) in
-    let comadir = Filename.dirname lexbuf.Lexing.lex_curr_p.pos_fname in
-    let uri = DocumentUri.of_path (Filename.concat comadir string) in
+    let uri = DocumentUri.of_path string in
     Location.create ~uri ~range
 
 let new_state () = State.{ modules = []; locations = [] }
@@ -74,7 +73,7 @@ rule coma state = parse
     }
     | string ' '+ (num as start_line) ' '+ (num as start_col) ' '+ (num as end_line) ' '+ (num as end_col) {
         if String.length string > 0 then (
-            let loc = relative_loc string start_line start_col end_line end_col lexbuf in
+            let loc = absolute_loc string start_line start_col end_line end_col in
             new_location (range lexbuf) loc state;
         );
         coma state lexbuf
@@ -85,7 +84,7 @@ rule coma state = parse
 and coma_module_meta state modident loc = parse
     | ' '+ { coma_module_meta state modident loc lexbuf }
     | "[#" string ' '+ (num as start_line) ' '+ (num as start_col) ' '+ (num as end_line) ' '+ (num as end_col) ' '* ']' {
-        let loc = relative_loc string start_line start_col end_line end_col lexbuf in
+        let loc = absolute_loc string start_line start_col end_line end_col in
         new_location (range lexbuf) loc state;
         coma_module_meta state modident (Some loc) lexbuf
     }
@@ -136,7 +135,7 @@ and rust_lexer end_flag = parse
 
 and top_coma uri file loc state = parse
 | "(*" ' '* '#' string ' '+ (num as start_line) ' '+ (num as start_col) ' '+ (num as end_line) ' '+ (num as end_col) ' '* "*)" {
-        let loc = relative_loc string start_line start_col end_line end_col lexbuf in
+        let loc = absolute_loc string start_line start_col end_line end_col in
         new_location (range lexbuf) loc state;
         top_coma uri file (Some loc) state lexbuf
 }
