@@ -84,7 +84,6 @@ async function createTests(client: LanguageClient) {
     }
   }
   client.onNotification("creusot/testitems", addTestItems);
-  // client.onNotification("", undefined);
 
   async function runHandler(request: vscode.TestRunRequest, cancellation: vscode.CancellationToken) {
     const rootPath = vscode.workspace.rootPath;
