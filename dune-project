@@ -17,6 +17,8 @@
   "xmlm"
   "uri"
   "yojson"
+  "ppx_yojson_conv"
+  "ppx_yojson_conv_lib"
   "jsonm")
  (authors "Li-yao Xia")
  (maintainers "Li-yao Xia <lysxia@gmail.com>")
