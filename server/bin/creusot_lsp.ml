@@ -87,6 +87,7 @@ class lsp_server =
       let* diags = match ft with
         | Rs ->
           let* _ =
+            if Creusot_manager.is_orphan (DocumentUri.to_path uri) then return () else
             let items = Creusot_manager.get_rust_test_items (DocumentUri.to_path uri) in
             let items = List.map Test_api.yojson_of_test_item items in
             notify_back#send_notification (Lsp.Server_notification.UnknownNotification

@@ -3,12 +3,6 @@ open Util
 
 val lookup_demangle : string -> Rust_syntax.def_path option
 
-val coma_file : uri:DocumentUri.t -> string -> bool
-(** [true] if the file was found *)
-
-val coma_file_as_string : uri:DocumentUri.t -> path:string -> string -> unit
-(** Like [coma_file] except we already got the contents as a string (what we get in the DidOpen notification) *)
-
 val lookup_def_path : Rust_syntax.def_path -> Hacky_coma_parser.loc_ident option
 
 val get_coma_lenses : DocumentUri.t -> CodeLens.t list
@@ -55,14 +49,13 @@ val get_rust_lenses : DocumentUri.t -> CodeLens.t list
 val get_rust_diagnostics : DocumentUri.t -> Diagnostic.t list
 val get_rust_test_items : string -> Test_api.test_item list
 
-val add_proof_json : source -> unit
 val get_proof_json_inlay_hints : string -> InlayHint.t list
 val get_proof_json_diagnostics : DocumentUri.t -> Diagnostic.t list
 
 val declare_orphan : string -> unit
-(** Rust files that don't have a crate *)
+val is_orphan : string -> bool
+(** Special layout for the creusot test suite, with .coma next to .rs sources *)
 
-val add_coma_file : source -> unit
 val initialize : string -> unit
 
 val get_revdep : DocumentUri.t -> DocumentUri.t option

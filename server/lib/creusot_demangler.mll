@@ -5,25 +5,25 @@ type segment
     | Other of string
 
 let fprint_segment h = function
-    | Impl s -> Printf.fprintf h "::impl{%s}" s
-    | Closure s -> Printf.fprintf h "::closure{%s}" s
-    | Other s -> Printf.fprintf h "::%s" s
+    | Impl s -> Format.fprintf h "::impl{%s}" s
+    | Closure s -> Format.fprintf h "::closure{%s}" s
+    | Other s -> Format.fprintf h "::%s" s
 
-let print_segment = fprint_segment stdout
+let print_segment = Format.printf "%a" fprint_segment
 
 let print_segments s = List.iter print_segment s; Printf.printf "\n"
 }
 
 rule demangle_segment_ buffer = parse
-| "qyi" (['0' - '9']+ as h) ("__" | eof) { Impl h }
-| "qyClosure" (['0' - '9']+ as i) ("__" | eof) { Closure i }
+| "qyi" (['0' - '9']+ as h) (("__" | eof) as e) { (Impl h, String.length e = 0) }
+| "qyClosure" (['0' - '9']+ as i) (("__" | eof) as e) { (Closure i, String.length e = 0) }
 | "qy" (['0' - '9']+ as c) "z" {
     let c = Char.chr (int_of_string c) in (* TODO: overflow *)
     Buffer.add_char buffer c;
     demangle_segment_ buffer lexbuf
 }
 | "qy" { failwith "demangle: unrecognized \"qy\"" }
-| "__" | eof { Other (Buffer.contents buffer) }
+| ("__" | eof) as e { (Other (Buffer.contents buffer), String.length e = 0) }
 | (_ as c) {
     Buffer.add_char buffer c;
     demangle_segment_ buffer lexbuf }
@@ -37,11 +37,10 @@ and demangle_namespace = parse
         let ns = demangle_namespace lexbuf in
         let buffer = Buffer.create 16 in
         let rec loop acc =
-            if lexbuf.Lexing.lex_eof_reached then List.rev (Other ns :: acc)
-            else
-                let seg = demangle_segment_ buffer lexbuf in
-                Buffer.clear buffer;
-                loop (seg :: acc) in
+            let (seg, eof) = demangle_segment_ buffer lexbuf in
+            Buffer.clear buffer;
+            if eof then List.rev (Other ns :: seg :: acc)
+            else loop (seg :: acc) in
         loop []
 
     let demangle_ident s = try Some (demangle_ident0 (Lexing.from_string s)) with _ -> None
@@ -49,7 +48,7 @@ and demangle_namespace = parse
     let demangle_path path =
         let path = Filename.chop_extension path in
         let path = String.split_on_char '/' path in
-        let demangle_segment s = demangle_segment_ (Buffer.create 16) (Lexing.from_string s) in
+        let demangle_segment s = fst (demangle_segment_ (Buffer.create 16) (Lexing.from_string s)) in
         try
             Some (match List.rev path with
             | last :: rest ->

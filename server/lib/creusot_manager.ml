@@ -158,22 +158,26 @@ let coma_lexbuf ~uri lexbuf =
       (p.pos_cnum - p.pos_bol + 1)
       (Printexc.to_string e)
 
-let coma_file ~uri (path : string) : bool =
+let coma_file ~uri (path : string) =
   try
     let h = open_in path in
     let lexbuf = Lexing.from_channel h in
     Lexing.set_filename lexbuf path;
     coma_lexbuf ~uri lexbuf;
-    close_in h;
-    true
+    close_in h
   with
-  | Sys_error _ -> false
-  | e -> log Error "coma_file: unexpected exception: %s" (Printexc.to_string e); false
+  | Sys_error _ -> ()
+  | e -> log Error "coma_file: unexpected exception: %s" (Printexc.to_string e)
 
 let coma_file_as_string ~uri ~path (s : string) : unit =
   let lexbuf = Lexing.from_string s in
   Lexing.set_filename lexbuf path;
   coma_lexbuf ~uri lexbuf
+
+let add_orphan_coma_file src =
+  match src with
+  | File path -> coma_file ~uri:(DocumentUri.of_path path) path
+  | String (path, s) -> coma_file_as_string ~uri:(DocumentUri.of_path path) ~path s
 
 let get_coma_info uri = ComaInfo.lookup_file uri
 
@@ -325,8 +329,8 @@ let get_rust_info ~package ~path : RustInfo.t =
           | None -> Other doc.module_ :: def_path
           | Some package -> Other package :: Other doc.module_ :: def_path
         in
-        let name = string_of_def_path dpath in
         let+ loc_ident = lookup_def_path dpath in
+        let name = string_of_def_path dpath in
         let status = get_status loc_ident.ident in
         let to_coma = loc_ident.loc in
         Hashtbl.replace visited loc_ident.ident ();
@@ -438,7 +442,19 @@ let guess_crate_dir (file : string) : (string * string * string) option =
         guess (Filename.basename file :: acc) parent
   in guess [] file
 
-let add_proof_json src =
+let add_orphan_proof_json src =
+  let path = file_name_of_source src in
+  let coma = Filename.dirname path ^ ".coma" in
+  try
+    let theories = read_proof_json ~coma src in
+    theories |> List.iter (fun theory ->
+      Hashtbl.replace theory_map theory.ProofPath.theory (path, theory));
+    Hashtbl.replace proof_json_map path theories
+  with
+  | e ->
+    log Error "add_proof_json: failed to read %s: %s" path (Printexc.to_string e)
+
+let add_top_proof_json src =
   let path = file_name_of_source src in
   let coma = Filename.dirname path ^ ".coma" in
   try
@@ -578,10 +594,13 @@ let add_coma_file src =
   try
     let path = file_name_of_source src in
     let uri = DocumentUri.of_path path in
-    let target_dir, crate_dir, file = match guess_crate_dir path with Some t -> t | None -> failwith ("could not guess crate for " ^ path) in
-    let root_crate, crate_type = split_last '_' crate_dir in
-    let primary = is_primary ~target_dir root_crate crate_type file in
-    add_coma_file' ~primary uri file
+    match guess_crate_dir path with
+    | Some (target_dir, crate_dir, file) ->
+      let root_crate, crate_type = split_last '_' crate_dir in
+      let primary = is_primary ~target_dir root_crate crate_type file in
+      add_coma_file' ~primary uri file
+    | None ->
+      add_orphan_coma_file src
   with
   | e -> log Error "add_coma_file: unexpected exception: %s" (Printexc.to_string e)
 
@@ -600,7 +619,7 @@ let initialize root =
           let primary = is_primary ~target_dir crate crate_type file in
           add_coma_file' ~primary (DocumentUri.of_path path) file
         else if Filename.basename file = "proof.json" then
-          add_proof_json (File path)
+          add_top_proof_json (File path)
         else ()
       in
       List.iter read files
@@ -623,11 +642,20 @@ let add_file src =
     let coma = base ^ ".coma" in
     (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
     if Sys.file_exists coma then (
+      declare_orphan path;
       let proof = Filename.concat base "proof.json" in
       add_coma_file (File coma);
-      add_proof_json (File proof);
-    );
-    add_rust_file src
+      add_orphan_proof_json (File proof);
+      add_rust_file src
+    ) else
+      add_rust_file src
   | Coma -> add_coma_file src
-  | ProofJson -> add_proof_json src
+  | ProofJson ->
+    let rs = Filename.dirname path ^ ".rs" in
+    (* Also hack for creusot *)
+    if Sys.file_exists rs then (
+      declare_orphan rs;
+      add_orphan_proof_json src
+    ) else
+      add_top_proof_json src
   | Unknown -> ()
