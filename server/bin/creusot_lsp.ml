@@ -1,10 +1,6 @@
 open Linol_lwt
 open Creusot_lsp
 
-let rs_files : (DocumentUri.t, unit) Hashtbl.t = Hashtbl.create 16
-
-(* Given a .coma or proof.json, what .rs files have diagnostics that depend on it *)
-let add_rs_file uri = Hashtbl.replace rs_files uri ()
 
 type file_type = Rs | Coma | Proof | Other
 
@@ -72,14 +68,7 @@ class lsp_server =
     method private changed_watched_file ~notify_back change =
       match change.type_ with
       | Created | Changed ->
-          let path = DocumentUri.to_path change.uri in
-          let base = Filename.basename path in
-          if base = "why3session.xml" then
-            () (* Creusot_lsp.Why3session.process_why3session_path path *)
-          else if base = "proof.json" then
-            Creusot_manager.add_proof_json (File path)
-          else if Filename.check_suffix base ".coma" then
-            Creusot_manager.add_coma_file change.uri;
+          Creusot_manager.add_file (File (DocumentUri.to_path change.uri));
           self#refresh_all ~notify_back change.uri
       | _ -> Lwt.return ()
 
@@ -115,27 +104,12 @@ class lsp_server =
         ?languageId
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
         let ft = file_type ~language_id:languageId (DocumentUri.to_path uri) in
-        let () = self#refresh_file ~notify_back ~ft uri ~content in
+        let () = self#refresh_file ~notify_back uri ~content in
         self#update_diagnostics ~notify_back ~ft uri
 
-    method private refresh_file ~notify_back:_ ~ft (uri : DocumentUri.t) ~content =
+    method private refresh_file ~notify_back:_ (uri : DocumentUri.t) ~content =
       let path = DocumentUri.to_path uri in
-      match ft with
-      | Rs ->
-        add_rs_file uri;
-        let base = Filename.chop_suffix path ".rs" in
-        let coma = base ^ ".coma" in
-        let proof = Filename.concat base "proof.json" in
-        (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
-        if Sys.file_exists coma then (
-          Creusot_manager.add_coma_file (DocumentUri.of_path coma);
-          Creusot_manager.declare_orphan path;
-          Creusot_manager.add_proof_json (File proof);
-        );
-        Creusot_manager.rust_file_as_string ~path content
-      | Coma -> Creusot_manager.add_coma_file uri
-      | Proof -> Creusot_manager.add_proof_json (String (path, content))
-      | Other -> ()
+      Creusot_manager.add_file (String (path, content))
 
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)

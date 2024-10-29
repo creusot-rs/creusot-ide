@@ -4,7 +4,7 @@ type source =
   | File of (* file name *) string
   | String of (* file name *) string * string
 
-val file_of_source : source -> string
+val file_name_of_source : source -> string
 
 module Lex : sig
   val new_line : Lexing.lexbuf -> unit

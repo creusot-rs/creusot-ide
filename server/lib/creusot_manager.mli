@@ -62,7 +62,8 @@ val get_proof_json_diagnostics : DocumentUri.t -> Diagnostic.t list
 val declare_orphan : string -> unit
 (** Rust files that don't have a crate *)
 
-val add_coma_file : DocumentUri.t -> unit
+val add_coma_file : source -> unit
 val initialize : string -> unit
 
 val get_revdep : DocumentUri.t -> DocumentUri.t option
+val add_file : source -> unit

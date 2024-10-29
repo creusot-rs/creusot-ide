@@ -4,7 +4,7 @@ type source =
   | File of (* file name *) string
   | String of (* file name *) string * string
 
-let file_of_source = function
+let file_name_of_source = function
   | File file | String (file, _) -> file
 
 module Lex = struct

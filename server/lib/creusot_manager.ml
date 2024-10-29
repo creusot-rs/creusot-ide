@@ -240,6 +240,11 @@ let rust_file_as_string ~path (s : string) : unit =
   Lexing.set_filename lexbuf path;
   rust_lexbuf ~path lexbuf
 
+let add_rust_file src =
+  match src with
+  | File path -> rust_file path
+  | String (path, s) -> rust_file_as_string ~path s
+
 let package_name = ref ""
 
 let read_cargo ~root =
@@ -434,7 +439,7 @@ let guess_crate_dir (file : string) : (string * string * string) option =
   in guess [] file
 
 let add_proof_json src =
-  let path = file_of_source src in
+  let path = file_name_of_source src in
   let coma = Filename.dirname path ^ ".coma" in
   try
     let theories = read_proof_json ~coma src in
@@ -569,9 +574,10 @@ let is_primary ~target_dir root_crate crate_type file =
     crate = root_crate && (crate_type = "rlib" || (crate_type = "bin" && only_crate crate))
   with Not_found -> false
 
-let add_coma_file uri =
+let add_coma_file src =
   try
-    let path = DocumentUri.to_path uri in
+    let path = file_name_of_source src in
+    let uri = DocumentUri.of_path path in
     let target_dir, crate_dir, file = match guess_crate_dir path with Some t -> t | None -> failwith ("could not guess crate for " ^ path) in
     let root_crate, crate_type = split_last '_' crate_dir in
     let primary = is_primary ~target_dir root_crate crate_type file in
@@ -599,3 +605,29 @@ let initialize root =
       in
       List.iter read files
     with Not_found -> ()
+
+type language = Rust | Coma | ProofJson | Unknown
+
+let guess_language path =
+  let open Filename in
+  if check_suffix path ".rs" then Rust
+  else if check_suffix path ".coma" then Coma
+  else if basename path = "proof.json" then ProofJson
+  else Unknown
+
+let add_file src =
+  let path = file_name_of_source src in
+  match guess_language path with
+  | Rust ->
+    let base = Filename.chop_suffix path ".rs" in
+    let coma = base ^ ".coma" in
+    (* Hack for the creusot repository: tests are standalone rust files and the coma and proofs are next to them. *)
+    if Sys.file_exists coma then (
+      let proof = Filename.concat base "proof.json" in
+      add_coma_file (File coma);
+      add_proof_json (File proof);
+    );
+    add_rust_file src
+  | Coma -> add_coma_file src
+  | ProofJson -> add_proof_json src
+  | Unknown -> ()
