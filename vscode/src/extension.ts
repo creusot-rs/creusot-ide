@@ -1,20 +1,13 @@
 import { workspace, ExtensionContext, Range, Uri, window } from "vscode";
 import * as vscode from "vscode";
-import * as os from "os";
 import child_process from "child_process";
 import process from "process";
 
 import {
-  DocumentUri,
   LanguageClient,
   LanguageClientOptions,
-  NotificationType,
-  RequestType,
-  ServerOptions,
   Executable,
 } from "vscode-languageclient/node";
-import { access, existsSync } from "fs";
-import { runInContext } from "vm";
 
 function getServerExecutable(context): Executable {
   const lspPath: string | undefined = workspace.getConfiguration("creusot").get("lspPath");
@@ -79,7 +72,6 @@ async function createTests(client: LanguageClient) {
     for (const item of items) {
       const test = controller.createTestItem(item.id, item.label, uri);
       test.range = mkRange(item.range);
-      console.log(test.range);
       fileItem.children.add(test);
     }
   }
