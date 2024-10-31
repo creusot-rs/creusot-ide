@@ -240,7 +240,7 @@ let load_plugins =
   fun env ->
     if !once then (
       once := false;
-      Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.Config.wconfig
+      Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.Config.wenv.config
     )
 
 let load_config =
@@ -268,11 +268,13 @@ let get_env () =
   env
 
 let rec path_goal_ theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_path) breadcrumbs : Session.goal option =
+  let (let+) = Option.bind in
   match q with
   | [] -> Some g
   | (tactic, i) :: q ->
     let display_breadcrumbs () = Format.asprintf "%s:%a" theory ProofPath.pp_tactic_path (List.rev breadcrumbs) in
-    match Session.apply e tactic g with
+    let+ tactic' = Tactic.lookup e tactic in
+    match Session.apply e tactic' g with
     | None -> log Error "%s: Could not apply tactic %s" (display_breadcrumbs ()) tactic; None
     | Some gs ->
       match List.nth_opt gs i with
@@ -282,26 +284,6 @@ let rec path_goal_ theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.t
 let path_goal ~theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_path) : Session.goal option =
   path_goal_ theory e g q []
 
-module Wutil = struct
-  include Wutil
-  open Why3
-  (* modified from why3find without exit *)
-  let load_theories (env : Why3.Env.env) file =
-    let byloc a b =
-      match a.Theory.th_name.id_loc , b.Theory.th_name.id_loc with
-      | None,None -> 0
-      | Some _,None -> (-1)
-      | None,Some _ -> (+1)
-      | Some la, Some lb -> Why3.Loc.compare la lb
-    in
-    try
-      let tmap,format = Why3.Env.(read_file base_language env file) in
-      Some (Wstdlib.Mstr.bindings tmap |> List.map snd |> List.sort byloc , format)
-    with error ->
-      log Error "load_theories: %s" (Printexc.to_string error) ;
-      None
-end
-
 let get_goal (q : qualified_goal) : string option =
   try
     let session = true in
@@ -309,11 +291,11 @@ let get_goal (q : qualified_goal) : string option =
     let file = q.file in
     let dir, _lib = Wutil.filepath file in
     let (let+) = Option.bind in
-    let+ theories, format = Wutil.load_theories env.Config.wenv file in
+    let theories, format = Wutil.load_theories env.Config.wenv.env file in
     let s = Why3find.Session.create ~session ~dir ~file ~format theories in
     let+ theory = List.find_opt (fun t -> Session.name t = q.theory) (Session.theories s) in
     let+ goal = List.find_opt (fun g -> Session.goal_name g = q.goal_info.vc) (Session.split theory) in
-    let+ goal = path_goal ~theory:(Session.name theory) env.wenv goal q.goal_info.tactics in
+    let+ goal = path_goal ~theory:(Session.name theory) env.wenv.env goal q.goal_info.tactics in
     let task = Session.goal_task goal in
     Some (Format.asprintf "%a" Why3.Pretty.print_sequent task)
   with e -> log Error "get_goal: Failed to load why3: %s" (Printexc.to_string e); None

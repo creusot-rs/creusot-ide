@@ -24,14 +24,14 @@ Creusot IDE consists of two parts:
         # Say yes to install creusot-lsp
 
     Creusot LSP currently depends on development versions of Why3 and Why3find.
-    (Tested with Why3 commit `9c0548a62` and Why3find commit `1055ea5` + temporary [local patch](./why3find.patch))
+    (Tested with Why3 commit `9c0548a62` and Why3find commit `7f728e9` + temporary [local patch](./why3find.patch))
 
         git clone https://gitlab.inria.fr/why3/why3
         opam pin why3 why3#9c0548a62
 
         git clone https://git.frama-c.com/pub/why3find
         cd why3find
-        git checkout 1055ea5
+        git checkout 7f728e9
         git apply ../creusot-ide/why3find.patch
         git commit -am "patch"
         opam pin why3find .
