@@ -114,7 +114,7 @@ async function createTests(client: LanguageClient) {
             return;
           }
           // why3find prove
-          const output = child_process.spawnSync("why3find", ["prove", test.id]);
+          const output = child_process.spawnSync("cargo", ["creusot", "prove", test.id]);
           run.appendOutput(`Finishing test ${test.label}\n\r`);
           if (output.status !== 0) {
             const logs = output.stdout.toString() + "\n" + output.stderr.toString();
@@ -139,7 +139,8 @@ async function createTests(client: LanguageClient) {
     const test0 = request.include[0];
     const run = controller.createTestRun(request, "Launch IDE", false);
     run.started(test0);
-    const output = child_process.spawnSync("why3find", ["prove", "--root", rootPath, test0.id, "-i"]);
+    process.chdir(rootPath);
+    const output = child_process.spawnSync("cargo", ["creusot", "prove", test0.id, "-i"]);
     run.end();
   }
   const debugProfile = controller.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, debugHandler);
@@ -194,7 +195,7 @@ export function activate(context: ExtensionContext) {
     vscode.TaskScope.Workspace,
     "Why3find Prove Everything",
     "creusot",
-    new vscode.ShellExecution("why3find", ["prove", "--package", "prelude", "verif/"])
+    new vscode.ShellExecution("cargo", ["creusot", "prove"])
   )
   registerCommand(context, "creusot.prove", async () => {
     const exec = await vscode.tasks.executeTask(creusotProve)
