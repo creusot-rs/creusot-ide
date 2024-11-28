@@ -17,6 +17,8 @@
   "xmlm"
   "uri"
   "yojson"
+  "ppx_deriving"
+  "ppx_expect"
   "ppx_yojson_conv"
   "ppx_yojson_conv_lib"
   "jsonm")
