@@ -170,7 +170,7 @@ class lsp_server =
           match Why3findUtil.ProofPath.qualified_goal_of_json req with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
-            let goal = Why3findUtil.get_goal path in
+            let goal = Why3findUtil.get_goal (Why3findUtil.get_env ()) path in
             let msg = match goal with
             | None -> "No goal found"
             | Some goal -> goal in

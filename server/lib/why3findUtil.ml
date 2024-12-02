@@ -243,18 +243,20 @@ let load_plugins =
       Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.Config.wenv.config
     )
 
-let load_config =
+let load_config ?(root = ".") ?(warn = true) =
   let lazy_config = lazy (
-  let config = Config.load_config "." in
-  (match config.packages with
-  | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
-  | _ -> ());
-  let check_warning w =
-    if not (List.mem w config.warnoff) then
-      log Warning "Disable warning \"%s\" in why3config.json, otherwise Why3 may produce lots of warnings on Creusot-generated code" w
-  in
-  check_warning "unused_variable";
-  check_warning "axiom_abstract";
+  let config = Config.load_config root in
+  if warn then (
+    (match config.packages with
+    | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
+    | _ -> ());
+    let check_warning w =
+      if not (List.mem w config.warnoff) then
+        log Warning "Disable warning \"%s\" in why3config.json, otherwise Why3 may produce lots of warnings on Creusot-generated code" w
+    in
+    check_warning "unused_variable";
+    check_warning "axiom_abstract";
+  );
   List.iter (fun unwarn ->
     Why3.Loc.disable_warning @@ Why3.Loc.register_warning unwarn Why3.Pp.empty_formatted)
     ("unused_variable" :: "axiom_abstract" :: config.warnoff);
@@ -264,6 +266,14 @@ let load_config =
 let get_env () =
   let config = load_config () in
   let env = Config.create_env ~config () in
+  load_plugins env;
+  env
+
+(* Hack for the test suite. get_env must not have been called. *)
+let get_test_env () =
+  let root = "../testdata" in
+  let config = load_config ~root ~warn:false () in
+  let env = Config.create_env ~root ~config () in
   load_plugins env;
   env
 
@@ -284,24 +294,36 @@ let rec path_goal_ theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.t
 let path_goal ~theory (e : Why3.Env.env) (g : Session.goal) (q : ProofPath.tactic_path) : Session.goal option =
   path_goal_ theory e g q []
 
-let get_goal (q : qualified_goal) : string option =
+let warn_if_none msg x = (match x with
+  | None -> log Warning "%s" msg
+  | Some _ -> ()); x
+
+let for_goal (env : _) (q : qualified_goal) (f : Session.goal -> 'a option) : 'a option =
   try
     let session = true in
-    let env = get_env () in
     let file = q.file in
-    let dir, _lib = Wutil.filepath file in
     let (let+) = Option.bind in
     let theories, format = Wutil.load_theories env.Config.wenv.env file in
+    let dir, _lib = Wutil.filepath file in
     let s = Why3find.Session.create ~session ~dir ~file ~format theories in
-    let+ theory = List.find_opt (fun t -> Session.name t = q.theory) (Session.theories s) in
-    let+ goal = List.find_opt (fun g -> Session.goal_name g = q.goal_info.vc) (Session.split theory) in
+    let+ theory = List.find_opt (fun t -> Session.name t = q.theory) (Session.theories s) |> warn_if_none (Printf.sprintf "theory %s not found" q.theory) in
+    let+ goal = List.find_opt (fun g -> Session.goal_name g = q.goal_info.vc) (Session.split theory) |> warn_if_none (Printf.sprintf "vc %s not found" q.goal_info.vc) in
     let+ goal = path_goal ~theory:(Session.name theory) env.wenv.env goal q.goal_info.tactics in
-    let task = Session.goal_task goal in
-    Some (Format.asprintf "%a" Why3.Pretty.print_sequent task)
+    f goal
   with e -> log Error "get_goal: Failed to load why3: %s" (Printexc.to_string e); None
+
+let get_goal env q = for_goal env q (fun goal ->
+  let task = Session.goal_task goal in
+  Some (Format.asprintf "%a" Why3.Pretty.print_sequent task))
 
 let loc_to_range loc =
   let _, l1, c1, l2, c2 = Why3.Loc.get loc in
-  Lsp.Types.Range.create (* why is this necessary?       ----------v *)
+  Lsp.Types.Range.create
     ~start:(Lsp.Types.Position.create ~line:(l1 - 1) ~character:c1)
     ~end_:(Lsp.Types.Position.create ~line:(l2 - 1) ~character:c2)
+
+let goal_term_loc (g : Session.goal) =
+  let open Why3 in
+  (Task.task_goal_fmla (Session.goal_task g)).Term.t_loc
+
+let get_goal_loc env q = for_goal env q goal_term_loc

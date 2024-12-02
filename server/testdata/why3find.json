@@ -1,0 +1,10 @@
+{
+  "fast": 0.2,
+  "time": 1,
+  "depth": 4,
+  "packages": [],
+  "provers": [],
+  "tactics": [ "split_vc" ],
+  "drivers": [],
+  "warnoff": [ "inexistent_file" ]
+}

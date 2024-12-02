@@ -1,5 +1,4 @@
 open Lsp.Types
-open Types
 open Util
 
 module ProofPath : sig
@@ -39,6 +38,9 @@ open ProofPath
 val parse_json : coma:string -> (theory -> unit) -> Jsonm.decoder -> unit
 val read_proof_json : coma:string -> source -> theory list
 
-val get_goal : ProofPath.qualified_goal -> string option
+val get_env : unit -> Why3find.Config.env
+val get_test_env : unit -> Why3find.Config.env
+val get_goal : Why3find.Config.env -> ProofPath.qualified_goal -> string option
+val get_goal_loc : Why3find.Config.env -> ProofPath.qualified_goal -> Why3.Loc.position option
 
 val loc_to_range : Why3.Loc.position -> Range.t
