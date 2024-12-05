@@ -316,14 +316,245 @@ let get_goal env q = for_goal env q (fun goal ->
   let task = Session.goal_task goal in
   Some (Format.asprintf "%a" Why3.Pretty.print_sequent task))
 
-let loc_to_range loc =
-  let _, l1, c1, l2, c2 = Why3.Loc.get loc in
+let rawloc_to_range (_, l1, c1, l2, c2) =
   Lsp.Types.Range.create
     ~start:(Lsp.Types.Position.create ~line:(l1 - 1) ~character:c1)
     ~end_:(Lsp.Types.Position.create ~line:(l2 - 1) ~character:c2)
+
+let loc_to_range loc = rawloc_to_range (Why3.Loc.get loc)
 
 let goal_term_loc (g : Session.goal) =
   let open Why3 in
   (Task.task_goal_fmla (Session.goal_task g)).Term.t_loc
 
 let get_goal_loc env q = for_goal env q goal_term_loc
+
+(**)
+
+module Why3Session = struct
+  type goal = { goal : Session.goal; children : string -> goal list }
+  type theory = { theory : Session.theory; theory_children : unit -> goal list }
+end
+
+exception Bad_tactic
+
+let rec get_goal_ (env : Why3.Env.env) (goal : Session.goal) : Why3Session.goal =
+  let open Why3Session in
+  { goal; children = fun tactic ->
+    match Tactic.lookup env tactic with
+    | None -> raise Not_found
+    | Some tactic' ->
+      match Session.apply env tactic' goal with
+      | None -> raise Bad_tactic
+      | Some goals -> List.map (get_goal_ env) goals
+  }
+
+let get_session (env : _) (coma_file : string) : Why3Session.theory list =
+  let open Why3Session in
+  let session = true in
+  let theories, format = Wutil.load_theories env.Config.wenv.env coma_file in
+  let dir, _lib = Wutil.filepath coma_file in
+  let s = Why3find.Session.create ~session ~dir ~file:coma_file ~format theories in
+  Session.theories s |> List.map (fun theory -> { theory; theory_children = fun () ->
+    Session.split theory |> List.map (fun g -> get_goal_ env.wenv.env g) })
+
+(**)
+
+module ProofInfo = struct
+  type goal = {
+    range: Range.t option;
+    expl: string;
+    unproved_subgoals: ProofPath.goal ProofPath.with_theory list;
+  }
+  type t = {
+    coma_file: string;
+    proof_file: string;
+    rust_file: string;
+
+    (* Typically, location of the function declaration *)
+    entity_range: Range.t;
+
+    unproved_goals: goal list;
+  }
+end
+
+let get_src_regex = Str.regexp "(\\* #\"\\([^\"]*\\)\" \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\*)"
+
+let get_src (coma_file : string) : string * Range.t =
+  let file = open_in coma_file in
+  let first_line = input_line file in
+  close_in file;
+  if not (Str.string_match get_src_regex first_line 0) then failwith (Printf.sprintf "%s: bad header \"%s\"" coma_file first_line);
+  let rust_file = Str.matched_group 1 first_line in
+  let l1 = int_of_string (Str.matched_group 2 first_line) in
+  let c1 = int_of_string (Str.matched_group 3 first_line) in
+  let l2 = int_of_string (Str.matched_group 4 first_line) in
+  let c2 = int_of_string (Str.matched_group 5 first_line) in
+  let range = rawloc_to_range (rust_file, l1, c1, l2, c2) in
+  (rust_file, range)
+
+(* Mapping from rust file names to relevant proof.json file names *)
+let proof_info_deps : (string, string list) Hashtbl.t = Hashtbl.create 10
+
+let add_coma_dep ~coma_file ~rust_file =
+  Hashtbl.replace proof_info_deps rust_file
+    (match Hashtbl.find_opt proof_info_deps rust_file with
+    | None -> [coma_file]
+    | Some files -> if List.mem coma_file files then files else coma_file :: files)
+
+let add_coma2 coma_file : unit =
+  try
+    let rust_file, _ = get_src coma_file in
+    add_coma_dep ~coma_file ~rust_file
+  with _ -> ()
+
+(* needle must not be empty *)
+let rec string_contains needle haystack =
+  String.length needle <= String.length haystack &&
+  (String.starts_with ~prefix:needle haystack || string_contains needle (String.sub haystack 1 (String.length haystack - 1)))
+
+let find_remove (f : 'a -> bool) (l : 'a list) : ('a * 'a list) option =
+  let rec loop acc = function
+    | [] -> raise Not_found
+    | x :: xs -> if f x then Some (x, List.rev_append acc xs) else loop (x :: acc) xs
+  in try loop [] l with
+  | Not_found -> None
+
+let known_goal_type expl =
+  String.starts_with ~prefix:"loop invariant" expl ||
+  String.starts_with ~prefix:"for invariant" expl ||
+  string_contains "ensures" expl
+
+let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
+  let rust_file, entity_range = get_src coma_file in
+  match Yojson.Basic.from_file proof_file with
+  | json ->
+    let goals = ref [] in
+    let collect_goals theories =
+      let open Yojson.Basic.Util in
+      let json = json |> member "proofs" in
+      let theories_left = ref theories in
+      to_assoc json |> List.iter (fun (theory, json) ->
+        match find_remove (fun th -> Session.name th.Why3Session.theory = theory) !theories_left with
+        | None -> failwith (Printf.sprintf "theory %s not found" theory)
+        | Some (th, theories') ->
+          theories_left := theories';
+          let goals_left = ref (th.Why3Session.theory_children ()) in
+          to_assoc json |> List.iter (fun (vc, json) ->
+            match find_remove (fun g -> Session.goal_name g.Why3Session.goal = vc) !goals_left with
+            | None -> failwith (Printf.sprintf "vc %s.%s not found" theory vc)
+            | Some (g, goals') ->
+              goals_left := goals';
+              let tactic, children =
+                match json with
+                | `Null -> let split_vc = "split_vc" in
+                  split_vc, List.map (fun child -> (child, `Null)) (g.Why3Session.children split_vc)
+                | `Assoc _ ->
+                  (match member "tactic" json with
+                  | `Null -> "", [] (* completed goal *)
+                  | `String tactic ->
+                    let children' = match member "children" json with
+                    | `List children' -> children'
+                    | _ -> failwith "Bad \"children\" field" in
+                    tactic, List.combine (g.Why3Session.children tactic) children'
+                  | _ -> failwith "Bad \"tactic\" field")
+                | _ -> failwith "Bad goal object"
+              in
+              children |> List.iteri (fun i (child, json) ->
+                let subgoals = ref [] in
+                let rec collect_subgoals tactics json =
+                  match json with
+                  | `Null ->
+                    let subgoal = ProofPath.{ file = coma_file; theory; goal_info = { vc; tactics } } in (*  *)
+                    subgoals := subgoal :: !subgoals
+                  | _ ->
+                    match member "tactic" json with
+                    | `Null -> () (* completed goal *)
+                    | `String tactic ->
+                      (match member "children" json with
+                      | `List children -> List.iteri (fun i -> collect_subgoals ((tactic, i) :: tactics)) children
+                      | _ -> failwith "bad \"children\" field (must be a list)")
+                    | _ -> failwith "bad \"tactic\" field (must be a string)"
+                in
+                collect_subgoals [(tactic, i)] json;
+                if not (List.is_empty !subgoals) then (
+                  let expl = Session.goal_expl child.Why3Session.goal in
+                  let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc child.Why3Session.goal) else None in
+                  goals := ProofInfo.{ range ; expl ; unproved_subgoals = List.rev !subgoals } :: !goals
+                ))
+              ))
+  in
+  collect_goals (get_session env coma_file);
+  ProofInfo.{ coma_file; proof_file; rust_file; entity_range; unproved_goals = List.rev !goals }
+
+let proof_info : (string, ProofInfo.t) Hashtbl.t = Hashtbl.create 10
+
+let create_proof_info (env : Config.env) ~proof_file ~coma_file =
+  log Debug "create_proof_info %s" coma_file;
+  match get_proof_info env ~proof_file ~coma_file with
+  | info ->
+      Hashtbl.replace proof_info coma_file info;
+      Hashtbl.replace proof_info_deps info.rust_file
+        (match Hashtbl.find_opt proof_info_deps info.rust_file with
+        | None -> [coma_file]
+        | Some files -> if List.mem coma_file files then files else coma_file :: files)
+  | exception e -> log Error "create_proof_info: %s" (Printexc.to_string e)
+
+let diagnostics_of_info info : Diagnostic.t list =
+  let open ProofInfo in
+  let mk_diagnostic goal =
+    goal.range |> Option.map (fun range ->
+      let message = Printf.sprintf "Unproved %s" goal.expl in
+      Diagnostic.create ~range ~severity:DiagnosticSeverity.Error ~message ())
+  in
+  List.filter_map mk_diagnostic info.unproved_goals
+
+let code_lenses_of_info info : CodeLens.t list =
+  let open ProofInfo in
+  let range = info.entity_range in
+  let command =
+    if List.is_empty info.unproved_goals then
+      Command.create ~title:"QED" ~command:"" ()
+    else
+      let title = Printf.sprintf "%d unproved goals" (List.length info.unproved_goals) in
+      Command.create ~title ~command:"" ()
+  in
+  let zero = Position.create ~line:0 ~character:0 in
+  let zero_range = Range.create ~start:zero ~end_:zero in
+  let coma_location = Location.create ~uri:(DocumentUri.of_path info.coma_file) ~range:zero_range in
+  let goto_coma = Command.create
+      ~title:"Inspect output Coma"
+      ~command:"creusot.peekLocations"
+      ~arguments:[
+        DocumentUri.(yojson_of_t (DocumentUri.of_path info.rust_file));
+        Position.(yojson_of_t range.start);
+        `List [Location.yojson_of_t coma_location];
+        `String "gotoAndPeek"]
+      ()
+  in
+  [ CodeLens.create ~range ~command ();
+    CodeLens.create ~range ~command:goto_coma ();
+  ]
+
+let concat_map_info ~rust_file (f : ProofInfo.t -> 'a list) : 'a list =
+  match Hashtbl.find_opt proof_info_deps rust_file with
+  | None -> []
+  | Some proof_files -> proof_files |> List.concat_map (fun proof_file ->
+    match Hashtbl.find_opt proof_info proof_file with
+      (* Skip if the dependency is outdated *)
+    | Some info when info.rust_file = rust_file -> f info
+    | _ -> [])
+
+let get_diagnostics ~rust_file : Diagnostic.t list =
+  concat_map_info ~rust_file diagnostics_of_info
+
+let get_lenses ~rust_file : CodeLens.t list =
+  concat_map_info ~rust_file code_lenses_of_info
+
+let refresh_info ~rust_file : unit =
+  match Hashtbl.find_opt proof_info_deps rust_file with
+  | None -> ()
+  | Some coma_files -> coma_files |> List.iter (fun coma_file ->
+    let (/) = Filename.concat in
+    let proof_file = Filename.chop_extension coma_file / "proof.json" in
+    create_proof_info (get_env ()) ~proof_file ~coma_file)

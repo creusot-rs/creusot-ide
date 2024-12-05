@@ -1,0 +1,27 @@
+{
+  "proofs": {
+    "Coma": {
+      "vc_sum_first_n'0": {
+        "tactic": "split_vc",
+        "children": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ]
+      }
+    }
+  }
+}

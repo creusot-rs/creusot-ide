@@ -343,84 +343,10 @@ let get_rust_info ~package ~path : RustInfo.t =
     }
 
 let get_rust_lenses uri =
-  let to_lsp_lenses d =
-    let open RustInfo in
-    let create_lens ~title ~command ~arguments = CodeLens.create ~range:d.range ~command:(Command.create ~title ~command ~arguments ()) () in
-    let proof_lens =
-      match d.status with
-      | Unknown -> []
-      | Qed -> [create_lens ~title:"QED" ~command:"" ~arguments:[]]
-      | ToProve goals -> [create_lens
-          ~title:(Printf.sprintf "%d unproved goals" (Array.length goals))
-          ~command:"creusot.peekLocations"
-          ~arguments:[
-            DocumentUri.yojson_of_t uri;
-            Position.(yojson_of_t d.range.Range.start);
-            `List (Array.(to_list (map (fun (_name, location) -> Location.yojson_of_t location) goals)));
-            `String "gotoAndPeek"]]
-    in
-    let coma_lens = create_lens
-        ~title:"Inspect output Coma"
-        ~command:"creusot.peekLocations"
-        ~arguments:[
-          DocumentUri.yojson_of_t uri;
-          Position.(yojson_of_t d.range.Range.start);
-          `List [Location.yojson_of_t d.to_coma];
-          `String "gotoAndPeek"]
-    in
-    proof_lens @ [coma_lens]
-  in
-  let path = DocumentUri.to_path uri in
-  let info = get_rust_info ~package:(crate_of path) ~path in
-  let inline_items = info.inline_items |> List.concat_map to_lsp_lenses in
-  let orphan_lens_opt =
-    match info.orphans with
-    | [] -> []
-    | _ :: _ ->
-      let open RustInfo in
-      let zero = Position.create ~line:0 ~character:0 in
-      let range = Range.create ~start:zero ~end_:zero in
-      let n_orphan_unproved = List.fold_left (fun acc orphan -> acc + match orphan.orphan_status with
-        | Unknown -> 0
-        | Qed -> 0
-        | ToProve goals -> Array.length goals) 0 info.orphans in
-      let title_end = if n_orphan_unproved = 0 then "" else " with %d unproved goals" in
-      let title = Printf.sprintf "%d orphan theories%s" (List.length info.orphans) title_end in
-      let orphans_locs = info.orphans |> List.map @@ fun orphan ->
-        Location.(yojson_of_t orphan.orphan_coma_loc) in
-      let command = Command.create
-        ~title
-        ~command:"creusot.peekLocations"
-        ~arguments: [
-          DocumentUri.yojson_of_t uri;
-          Position.(yojson_of_t zero);
-          `List orphans_locs
-        ] () in
-      [CodeLens.create ~range ~command ()]
-  in
-  orphan_lens_opt @ inline_items
+  Why3findUtil.get_lenses ~rust_file:(DocumentUri.to_path uri)
 
 let get_rust_diagnostics uri =
-  let to_related_information (goal_name, location) =
-    DiagnosticRelatedInformation.create ~location ~message:goal_name
-  in
-  let to_lsp_diagnostics d =
-    let open RustInfo in
-    let range = d.range in
-    let source = "Creusot" in
-    let create_diagnostic message severity relatedInformation =
-      Diagnostic.create ~range ~source ~message ~severity ~relatedInformation () in
-    match d.status with
-    | Unknown -> []
-    | Qed -> [create_diagnostic "QED" DiagnosticSeverity.Information []]
-    | ToProve goals -> [create_diagnostic
-          (Printf.sprintf "%d unproved goals" (Array.length goals))
-          DiagnosticSeverity.Warning
-          Array.(to_list (map to_related_information goals))]
-  in
-  let path = DocumentUri.to_path uri in
-  let info = get_rust_info ~package:(crate_of path) ~path in
-  info.inline_items |> List.concat_map to_lsp_diagnostics
+  Why3findUtil.get_diagnostics ~rust_file:(DocumentUri.to_path uri)
 
 let get_rust_test_items path =
   let info = get_rust_info ~package:(crate_of path) ~path in
@@ -615,10 +541,11 @@ let initialize root =
       let files = Util.walk_dir target_crate_dir in
       let read file =
         let path = target_crate_dir / file in
-        if Filename.check_suffix file ".coma" then
+        if Filename.check_suffix file ".coma" then (
+          Why3findUtil.add_coma2 file;
           let primary = is_primary ~target_dir crate crate_type file in
           add_coma_file' ~primary (DocumentUri.of_path path) file
-        else if Filename.basename file = "proof.json" then
+        ) else if Filename.basename file = "proof.json" then
           add_top_proof_json (File path)
         else ()
       in
@@ -649,7 +576,7 @@ let add_file src =
       add_rust_file src
     ) else
       add_rust_file src
-  | Coma -> add_coma_file src
+  | Coma -> add_coma_file src; add_coma2 (file_name_of_source src)
   | ProofJson ->
     let rs = Filename.dirname path ^ ".rs" in
     (* Also hack for creusot *)
