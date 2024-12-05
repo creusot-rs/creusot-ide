@@ -44,3 +44,20 @@ val get_goal : Why3find.Config.env -> ProofPath.qualified_goal -> string option
 val get_goal_loc : Why3find.Config.env -> ProofPath.qualified_goal -> Why3.Loc.position option
 
 val loc_to_range : Why3.Loc.position -> Range.t
+
+module ProofInfo : sig
+  type t = {
+    coma_file: string;
+    proof_file: string;
+    rust_file: string;
+
+    (* Typically, location of the function declaration *)
+    entity_position: Range.t;
+
+    unproved_located: Range.t list;
+    unproved_unlocated: int;
+  }
+end
+
+val create_proof_info : Why3find.Config.env -> proof_file:string -> coma_file:string -> unit
+val get_diagnostics : rust_file:string -> Diagnostic.t list
