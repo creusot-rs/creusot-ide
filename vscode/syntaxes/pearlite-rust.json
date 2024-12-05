@@ -46,7 +46,7 @@
             }
         },
         {
-            "begin": "\\b(invariant|requires|ensures|variant)\\s*\\(",
+            "begin": "\\b(?<=#\\[\\s*)(invariant|requires|ensures|variant)\\s*\\(",
             "end": "\\)",
             "contentName": "meta.embedded.block.pearlite source.pearlite",
             "beginCaptures": {
@@ -57,7 +57,7 @@
             ]
         },
         {
-            "match": "\\b(?:invariant|requires|ensures|variant)\\b",
+            "match": "\\b(?<=#\\[\\s*)(?:invariant|requires|ensures|variant)\\b",
             "name": "keyword.control"
         }
     ]
