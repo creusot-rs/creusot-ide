@@ -406,7 +406,7 @@ let add_coma2 coma_file : unit =
   try
     let rust_file, _ = get_src coma_file in
     add_coma_dep ~coma_file ~rust_file
-  with _ -> ()
+  with e -> log Error "Bad match %s: %s" coma_file (Printexc.to_string e); ()
 
 (* needle must not be empty *)
 let rec string_contains needle haystack =
@@ -423,6 +423,7 @@ let find_remove (f : 'a -> bool) (l : 'a list) : ('a * 'a list) option =
 let known_goal_type expl =
   String.starts_with ~prefix:"loop invariant" expl ||
   String.starts_with ~prefix:"for invariant" expl ||
+  "assertion" = expl ||
   string_contains "ensures" expl
 
 let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
@@ -538,12 +539,13 @@ let code_lenses_of_info info : CodeLens.t list =
 
 let concat_map_info ~rust_file (f : ProofInfo.t -> 'a list) : 'a list =
   match Hashtbl.find_opt proof_info_deps rust_file with
-  | None -> []
+  | None -> log Debug "No proofs found for %s" rust_file; []
   | Some proof_files -> proof_files |> List.concat_map (fun proof_file ->
     match Hashtbl.find_opt proof_info proof_file with
       (* Skip if the dependency is outdated *)
     | Some info when info.rust_file = rust_file -> f info
-    | _ -> [])
+    | Some info -> log Debug "Outdated dependency %s for %s" info.coma_file rust_file; []
+    | None -> [])
 
 let get_diagnostics ~rust_file : Diagnostic.t list =
   concat_map_info ~rust_file diagnostics_of_info

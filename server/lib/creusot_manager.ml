@@ -542,7 +542,7 @@ let initialize root =
       let read file =
         let path = target_crate_dir / file in
         if Filename.check_suffix file ".coma" then (
-          Why3findUtil.add_coma2 file;
+          Why3findUtil.add_coma2 path;
           let primary = is_primary ~target_dir crate crate_type file in
           add_coma_file' ~primary (DocumentUri.of_path path) file
         ) else if Filename.basename file = "proof.json" then
@@ -574,8 +574,10 @@ let add_file src =
       add_coma_file (File coma);
       add_orphan_proof_json (File proof);
       add_rust_file src
-    ) else
+    ) else (
+      Why3findUtil.refresh_info ~rust_file:path;
       add_rust_file src
+    )
   | Coma -> add_coma_file src; add_coma2 (file_name_of_source src)
   | ProofJson ->
     let rs = Filename.dirname path ^ ".rs" in
