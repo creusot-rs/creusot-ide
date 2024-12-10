@@ -1,6 +1,7 @@
 open Linol_lwt
 open Creusot_lsp
 
+let server_info = InitializeResult.create_serverInfo ~name:"Creusot" ~version:"0.1" ()
 
 type file_type = Rs | Coma | Proof | Other
 
@@ -38,7 +39,8 @@ class lsp_server =
           Lwt.return ()
         | _ -> Lwt.return ()
       in
-      super#on_req_initialize ~notify_back params
+      let* result = super#on_req_initialize ~notify_back params in
+      return InitializeResult.{ result with serverInfo = Some server_info }
 
     method! config_modify_capabilities capabilities =
       { capabilities with
