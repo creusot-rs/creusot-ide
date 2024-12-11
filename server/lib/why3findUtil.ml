@@ -537,6 +537,17 @@ let code_lenses_of_info info : CodeLens.t list =
     CodeLens.create ~range ~command:goto_coma ();
   ]
 
+let drop_prefix ~prefix str =
+  if String.starts_with ~prefix str then String.sub str (String.length prefix) (String.length str - String.length prefix)
+  else str
+
+let test_item_of_info info =
+  let open ProofInfo in
+  let id = info.coma_file in
+  let label = drop_prefix ~prefix:"M_" Filename.(chop_suffix (basename info.coma_file) ".coma") in
+  let range = info.entity_range in
+  Test_api.{ id; label; range }
+
 let concat_map_info ~rust_file (f : ProofInfo.t -> 'a list) : 'a list =
   match Hashtbl.find_opt proof_info_deps rust_file with
   | None -> log Debug "No proofs found for %s" rust_file; []
@@ -552,6 +563,9 @@ let get_diagnostics ~rust_file : Diagnostic.t list =
 
 let get_lenses ~rust_file : CodeLens.t list =
   concat_map_info ~rust_file code_lenses_of_info
+
+let get_test_items ~rust_file : Test_api.test_item list =
+  concat_map_info ~rust_file (fun info -> [test_item_of_info info])
 
 let refresh_info ~rust_file : unit =
   match Hashtbl.find_opt proof_info_deps rust_file with
