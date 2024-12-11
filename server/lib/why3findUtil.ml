@@ -504,11 +504,11 @@ let create_proof_info (env : Config.env) ~proof_file ~coma_file =
 let diagnostics_of_info info : Diagnostic.t list =
   let open ProofInfo in
   let mk_diagnostic goal =
-    goal.range |> Option.map (fun range ->
-      let message = Printf.sprintf "Unproved %s" goal.expl in
-      Diagnostic.create ~range ~severity:DiagnosticSeverity.Error ~message ())
+    let range = Option.value ~default:info.entity_range goal.range in
+    let message = Printf.sprintf "Unproved %s" goal.expl in
+    Diagnostic.create ~range ~severity:DiagnosticSeverity.Error ~message ()
   in
-  List.filter_map mk_diagnostic info.unproved_goals
+  List.map mk_diagnostic info.unproved_goals
 
 let code_lenses_of_info info : CodeLens.t list =
   let open ProofInfo in
