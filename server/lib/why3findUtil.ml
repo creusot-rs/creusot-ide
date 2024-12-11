@@ -428,10 +428,24 @@ let known_goal_type expl =
 
 let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
   let rust_file, entity_range = get_src coma_file in
-  match Yojson.Basic.from_file proof_file with
-  | json ->
+  let collect_goals theories =
     let goals = ref [] in
-    let collect_goals theories =
+    begin match Yojson.Basic.from_file proof_file with
+    | exception Sys_error _ ->
+      theories |> List.iter (fun th ->
+        th.Why3Session.theory_children () |> List.iter (fun g ->
+          g.Why3Session.children "split_vc" |> List.iter (fun g ->
+            let subgoal = ProofPath.{
+              file = coma_file;
+              theory = Session.name th.Why3Session.theory;
+              goal_info = { vc = Session.goal_name g.Why3Session.goal; tactics = [] } } in
+            let expl = Session.goal_expl g.Why3Session.goal in
+            let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc g.Why3Session.goal) else None in
+            goals := ProofInfo.{ range ; expl ; unproved_subgoals = [subgoal] } :: !goals
+          );
+        )
+      )
+    | json ->
       let open Yojson.Basic.Util in
       let json = json |> member "proofs" in
       let theories_left = ref theories in
@@ -484,9 +498,11 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
                   goals := ProofInfo.{ range ; expl ; unproved_subgoals = List.rev !subgoals } :: !goals
                 ))
               ))
+    end;
+    List.rev !goals
   in
-  collect_goals (get_session env coma_file);
-  ProofInfo.{ coma_file; proof_file; rust_file; entity_range; unproved_goals = List.rev !goals }
+  let unproved_goals = collect_goals (get_session env coma_file) in
+  ProofInfo.{ coma_file; proof_file; rust_file; entity_range; unproved_goals }
 
 let proof_info : (string, ProofInfo.t) Hashtbl.t = Hashtbl.create 10
 
