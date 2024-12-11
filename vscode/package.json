@@ -32,15 +32,23 @@
     "commands": [
       {
         "command": "creusot.build",
-        "title": "Creusot Build"
-      },
-      {
-        "command": "creusot.why3ide",
-        "title": "Launch Why3 IDE"
+        "title": "Creusot Build",
+        "category": "Creusot"
       },
       {
         "command": "creusot.prove",
-        "title": "Why3find Prove"
+        "title": "Why3find Prove",
+        "category": "Creusot"
+      },
+      {
+        "command": "creusot.stop",
+        "title": "Stop language server",
+        "category": "Creusot"
+      },
+      {
+        "command": "creusot.restart",
+        "title": "Restart language server",
+        "category": "Creusot"
       }
     ],
     "languages": [

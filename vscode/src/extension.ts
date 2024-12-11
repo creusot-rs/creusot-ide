@@ -229,4 +229,12 @@ export function activate(context: ExtensionContext) {
   });
 
   createTests(client);
+
+  registerCommand(context, "creusot.stop", async () => {
+    await client.stop();
+  })
+
+  registerCommand(context, "creusot.restart", async () => {
+    await client.restart();
+  })
 }
