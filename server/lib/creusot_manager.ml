@@ -341,10 +341,13 @@ let get_rust_info ~package ~path : RustInfo.t =
     }
 
 let get_rust_lenses uri =
-  Why3findUtil.get_lenses ~rust_file:(DocumentUri.to_path uri)
+  let rust_file = DocumentUri.to_path uri in
+  Why3findUtil.refresh_info ~rust_file;
+  Why3findUtil.get_lenses ~rust_file
 
 let get_rust_diagnostics uri =
-  Why3findUtil.get_diagnostics ~rust_file:(DocumentUri.to_path uri)
+  let rust_file = DocumentUri.to_path uri in
+  Why3findUtil.get_diagnostics ~rust_file
 
 let get_rust_test_items rust_file =
   Why3findUtil.get_test_items ~rust_file
