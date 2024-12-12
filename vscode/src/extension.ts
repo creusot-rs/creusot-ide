@@ -58,7 +58,6 @@ function getExtension(fname: string): string {
 }
 
 async function createTests(client: LanguageClient) {
-  let x = 0;
   const controller = vscode.tests.createTestController(
     'creusotProofs',
     'Creusot Proofs'
