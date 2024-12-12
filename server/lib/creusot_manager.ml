@@ -607,3 +607,10 @@ let get_diagnostics = function
 let get_test_items = function
   | Rust rust_file -> Some (get_rust_test_items rust_file)
   | Coma _ | ProofJson _ -> None
+
+let get_notify_changes = function
+  | Rust rust_file -> [DocumentUri.of_path rust_file]
+  | Coma coma_file -> Option.to_list (Option.map DocumentUri.of_path (Why3findUtil.get_rust_source ~coma_file))
+  | ProofJson proof_json_file ->
+    let coma_file = Filename.(dirname proof_json_file ^ ".coma") in
+    Option.to_list (Option.map DocumentUri.of_path (Why3findUtil.get_rust_source ~coma_file))

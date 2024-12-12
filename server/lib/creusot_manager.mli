@@ -63,3 +63,4 @@ val uri_to_file : DocumentUri.t -> file_id option
 val get_code_lenses : file_id -> CodeLens.t list
 val get_diagnostics : file_id -> Diagnostic.t list option
 val get_test_items : file_id -> Test_api.test_item list option
+val get_notify_changes : file_id -> DocumentUri.t list

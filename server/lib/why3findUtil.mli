@@ -71,3 +71,4 @@ val get_lenses : rust_file:string -> CodeLens.t list
 val get_test_items : rust_file:string -> Test_api.test_item list
 val refresh_info : rust_file:string -> unit
 val add_coma2 : string -> unit
+val get_rust_source : coma_file:string -> string option

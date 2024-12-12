@@ -411,6 +411,12 @@ let add_coma2 coma_file : unit =
     add_coma_dep ~coma_file ~rust_file
   with e -> log Error "Bad match %s: %s" coma_file (Printexc.to_string e); ()
 
+let get_rust_source ~coma_file =
+  try
+    let (rust_file, _) = get_src coma_file in
+    Some rust_file
+  with _ -> None
+
 (* needle must not be empty *)
 let rec string_contains needle haystack =
   String.length needle <= String.length haystack &&
