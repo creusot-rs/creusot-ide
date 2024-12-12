@@ -376,6 +376,9 @@ module ProofInfo = struct
 
     unproved_goals: goal list;
   }
+
+  let pp_info h info =
+    Format.fprintf h "%s: %d goals" info.coma_file (List.length info.unproved_goals)
 end
 
 let get_src_regex = Str.regexp "(\\* #\"\\([^\"]*\\)\" \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\*)"
