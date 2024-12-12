@@ -60,6 +60,7 @@ val add_file : source -> unit
 type file_id
 
 val uri_to_file : DocumentUri.t -> file_id option
+val refresh : file_id -> unit
 val get_code_lenses : file_id -> CodeLens.t list
 val get_diagnostics : file_id -> Diagnostic.t list option
 val get_test_items : file_id -> Test_api.test_item list option

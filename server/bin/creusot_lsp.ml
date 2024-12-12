@@ -103,6 +103,7 @@ class lsp_server =
         let option_iter f = function
           | None -> return ()
           | Some x -> f x in
+        Creusot_manager.refresh file;
         let* _ = option_iter send_test_items (Creusot_manager.get_test_items file) in
         let* _ = option_iter notify_back#send_diagnostic (Creusot_manager.get_diagnostics file) in
         return (Creusot_manager.get_code_lenses file)

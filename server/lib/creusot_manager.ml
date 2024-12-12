@@ -341,7 +341,6 @@ let get_rust_info ~package ~path : RustInfo.t =
     }
 
 let get_rust_lenses rust_file =
-  Why3findUtil.refresh_info ~rust_file;
   Why3findUtil.get_lenses ~rust_file
 
 let get_rust_diagnostics rust_file =
@@ -593,6 +592,10 @@ let uri_to_file uri =
   else if Filename.check_suffix path ".coma" then Some (Coma path)
   else if Filename.basename path = "proof.json" then Some (ProofJson path)
   else None
+
+let refresh = function
+  | Rust rust_file -> Why3findUtil.refresh_info ~rust_file
+  | _ -> ()
 
 let get_code_lenses = function
   | Rust rust_file -> get_rust_lenses rust_file
