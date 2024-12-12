@@ -77,11 +77,11 @@ async function createTests(client: LanguageClient) {
   client.onNotification("creusot/testitems", addTestItems);
 
   async function runHandler(request: vscode.TestRunRequest, cancellation: vscode.CancellationToken) {
-    const rootPath = vscode.workspace.rootPath;
-    if (rootPath === undefined) {
+    if (vscode.workspace.workspaceFolders === undefined) {
       vscode.window.showErrorMessage("Could not run tests: no root path found");
       return;
     }
+    const rootPath = vscode.workspace.workspaceFolders[0].uri.fsPath;
     const run = controller.createTestRun(request, "Prove");
     let requests: readonly vscode.TestItem[];
     if (request.include) {
