@@ -55,9 +55,12 @@ class lsp_server =
       | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s (self#changed_watched_file ~notify_back) changes
       | notif -> super#on_notification_unhandled ~notify_back notif
 
-    method private changed_watched_file ~notify_back:_ change =
+    method private changed_watched_file ~notify_back change =
       match change.type_ with
-      | Created | Changed -> Creusot_manager.add_file (File (DocumentUri.to_path change.uri)); Lwt.return ()
+      | Created | Changed ->
+        Creusot_manager.add_file (File (DocumentUri.to_path change.uri));
+        let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _ -> Lwt.return ()) in
+        Lwt.return ()
       | _ -> Lwt.return ()
 
     method private _on_doc ~notify_back:(_ : Linol_lwt.Jsonrpc2.notify_back)
