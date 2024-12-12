@@ -396,14 +396,18 @@ let get_src (coma_file : string) : string * Range.t =
   let range = rawloc_to_range (rust_file, l1, c1, l2, c2) in
   (rust_file, range)
 
+type 'a hashset = ('a, unit) Hashtbl.t
 (* Mapping from rust file names to relevant proof.json file names *)
-let proof_info_deps : (string, string list) Hashtbl.t = Hashtbl.create 10
+let proof_info_deps : (string, string hashset) Hashtbl.t = Hashtbl.create 10
+
+let get_deps rust_file =
+  match Hashtbl.find_opt proof_info_deps rust_file with
+  | None -> let files = Hashtbl.create 10 in Hashtbl.replace proof_info_deps rust_file files; files
+  | Some files -> files
 
 let add_coma_dep ~coma_file ~rust_file =
-  Hashtbl.replace proof_info_deps rust_file
-    (match Hashtbl.find_opt proof_info_deps rust_file with
-    | None -> [coma_file]
-    | Some files -> if List.mem coma_file files then files else coma_file :: files)
+  let deps = get_deps rust_file in
+  Hashtbl.replace deps coma_file ()
 
 let add_coma2 coma_file : unit =
   try
@@ -519,12 +523,11 @@ let create_proof_info (env : Config.env) ~proof_file ~coma_file =
   log Debug "create_proof_info %s" coma_file;
   match get_proof_info env ~proof_file ~coma_file with
   | info ->
-      Hashtbl.replace proof_info coma_file info;
-      Hashtbl.replace proof_info_deps info.rust_file
-        (match Hashtbl.find_opt proof_info_deps info.rust_file with
-        | None -> [coma_file]
-        | Some files -> if List.mem coma_file files then files else coma_file :: files)
-  | exception e -> log Error "create_proof_info: %s" (Printexc.to_string e)
+    Hashtbl.replace proof_info coma_file info;
+    add_coma_dep ~coma_file ~rust_file:info.rust_file
+  | exception e ->
+    Hashtbl.remove proof_info coma_file; (* Remove old info if it exists *)
+    log Error "create_proof_info: %s" (Printexc.to_string e)
 
 let diagnostics_of_info info : Diagnostic.t list =
   let open ProofInfo in
@@ -576,12 +579,15 @@ let test_item_of_info info =
 let concat_map_info ~rust_file (f : ProofInfo.t -> 'a list) : 'a list =
   match Hashtbl.find_opt proof_info_deps rust_file with
   | None -> log Debug "No proofs found for %s" rust_file; []
-  | Some proof_files -> proof_files |> List.concat_map (fun proof_file ->
-    match Hashtbl.find_opt proof_info proof_file with
-      (* Skip if the dependency is outdated *)
-    | Some info when info.rust_file = rust_file -> f info
-    | Some info -> log Debug "Outdated dependency %s for %s" info.coma_file rust_file; []
-    | None -> [])
+  | Some proof_files ->
+    let result = ref [] in
+    proof_files |> Hashtbl.iter (fun proof_file () ->
+      match Hashtbl.find_opt proof_info proof_file with
+        (* Skip if the dependency is outdated *)
+      | Some info when info.rust_file = rust_file -> result := f info :: !result
+      | Some info -> log Debug "Outdated dependency %s for %s" info.coma_file rust_file
+      | None -> ());
+    List.(concat (rev !result))
 
 let get_diagnostics ~rust_file : Diagnostic.t list =
   concat_map_info ~rust_file diagnostics_of_info
@@ -595,7 +601,13 @@ let get_test_items ~rust_file : Test_api.test_item list =
 let refresh_info ~rust_file : unit =
   match Hashtbl.find_opt proof_info_deps rust_file with
   | None -> ()
-  | Some coma_files -> coma_files |> List.iter (fun coma_file ->
-    let (/) = Filename.concat in
-    let proof_file = Filename.chop_extension coma_file / "proof.json" in
-    create_proof_info (get_env ()) ~proof_file ~coma_file)
+  | Some coma_files ->
+    let bad_coma_files = ref [] in
+    coma_files |> Hashtbl.iter (fun coma_file () ->
+      let (/) = Filename.concat in
+      let proof_file = Filename.chop_extension coma_file / "proof.json" in
+      if Sys.file_exists coma_file then
+        create_proof_info (get_env ()) ~proof_file ~coma_file
+      else
+        bad_coma_files := coma_file :: !bad_coma_files);
+    List.iter (Hashtbl.remove coma_files) !bad_coma_files
