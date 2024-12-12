@@ -533,8 +533,8 @@ let diagnostics_of_info info : Diagnostic.t list =
   let open ProofInfo in
   let mk_diagnostic goal =
     let range = Option.value ~default:info.entity_range goal.range in
-    let message = Printf.sprintf "Unproved %s" goal.expl in
-    Diagnostic.create ~range ~severity:DiagnosticSeverity.Error ~message ()
+    let message = Printf.sprintf "Unproved goal: %s" goal.expl in
+    Diagnostic.create ~source:"Creusot" ~range ~severity:DiagnosticSeverity.Error ~message ()
   in
   List.map mk_diagnostic info.unproved_goals
 
