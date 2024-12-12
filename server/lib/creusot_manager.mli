@@ -45,12 +45,8 @@ module RustInfo : sig
 end
 
 val get_rust_info : package:string option -> path:string -> RustInfo.t
-val get_rust_lenses : DocumentUri.t -> CodeLens.t list
-val get_rust_diagnostics : DocumentUri.t -> Diagnostic.t list
-val get_rust_test_items : string -> Test_api.test_item list
 
 val get_proof_json_inlay_hints : string -> InlayHint.t list
-val get_proof_json_diagnostics : DocumentUri.t -> Diagnostic.t list
 
 val declare_orphan : string -> unit
 val is_orphan : string -> bool
@@ -60,3 +56,10 @@ val initialize : string -> unit
 
 val get_revdep : DocumentUri.t -> DocumentUri.t option
 val add_file : source -> unit
+
+type file_id
+
+val uri_to_file : DocumentUri.t -> file_id option
+val get_code_lenses : file_id -> CodeLens.t list
+val get_diagnostics : file_id -> Diagnostic.t list option
+val get_test_items : file_id -> Test_api.test_item list option

@@ -340,13 +340,11 @@ let get_rust_info ~package ~path : RustInfo.t =
       orphans;
     }
 
-let get_rust_lenses uri =
-  let rust_file = DocumentUri.to_path uri in
+let get_rust_lenses rust_file =
   Why3findUtil.refresh_info ~rust_file;
   Why3findUtil.get_lenses ~rust_file
 
-let get_rust_diagnostics uri =
-  let rust_file = DocumentUri.to_path uri in
+let get_rust_diagnostics rust_file =
   Why3findUtil.get_diagnostics ~rust_file
 
 let get_rust_test_items rust_file =
@@ -413,7 +411,6 @@ let get_proof_json_inlay_hints file : InlayHint.t list = match Hashtbl.find_opt 
     !hints
 
 let get_proof_json_diagnostics file : Diagnostic.t list =
-  let file = DocumentUri.to_path file in
   match Hashtbl.find_opt proof_json_map file with
   | None -> log Error "diagnostics: %s not found" file; []
   | Some theories ->
@@ -583,3 +580,30 @@ let add_file src =
     ) else
       add_top_proof_json src
   | Unknown -> ()
+
+(* Path tagged with file type *)
+type file_id
+  = Rust of string
+  | Coma of string
+  | ProofJson of string
+
+let uri_to_file uri =
+  let path = DocumentUri.to_path uri in
+  if Filename.check_suffix path ".rs" then Some (Rust path)
+  else if Filename.check_suffix path ".coma" then Some (Coma path)
+  else if Filename.basename path = "proof.json" then Some (ProofJson path)
+  else None
+
+let get_code_lenses = function
+  | Rust rust_file -> get_rust_lenses rust_file
+  | Coma coma_file -> get_coma_lenses (DocumentUri.of_path coma_file)
+  | ProofJson _ -> []
+
+let get_diagnostics = function
+  | Rust rust_file -> Some (get_rust_diagnostics rust_file)
+  | Coma _ -> None
+  | ProofJson proof_json_file -> Some (get_proof_json_diagnostics proof_json_file)
+
+let get_test_items = function
+  | Rust rust_file -> Some (get_rust_test_items rust_file)
+  | Coma _ | ProofJson _ -> None

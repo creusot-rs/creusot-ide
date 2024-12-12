@@ -3,18 +3,6 @@ open Creusot_lsp
 
 let server_info = InitializeResult.create_serverInfo ~name:"Creusot" ~version:"0.1" ()
 
-type file_type = Rs | Coma | Proof | Other
-
-let file_type ?language_id path =
-  match language_id with
-  | Some (Some "rust") -> Rs
-  | Some (Some "coma") -> Coma
-  | Some (Some "why3proof") -> Proof
-  | _ when Filename.check_suffix path ".rs" -> Rs
-  | _ when Filename.check_suffix path ".coma" -> Coma
-  | _ when Filename.basename path = "proof.json" -> Proof
-  | _ -> Other
-
 class lsp_server =
   object (self)
     inherit Linol_lwt.Jsonrpc2.server as super
@@ -67,62 +55,25 @@ class lsp_server =
       | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s (self#changed_watched_file ~notify_back) changes
       | notif -> super#on_notification_unhandled ~notify_back notif
 
-    method private changed_watched_file ~notify_back change =
+    method private changed_watched_file ~notify_back:_ change =
       match change.type_ with
-      | Created | Changed ->
-          Creusot_manager.add_file (File (DocumentUri.to_path change.uri));
-          self#refresh_all ~notify_back change.uri
+      | Created | Changed -> Creusot_manager.add_file (File (DocumentUri.to_path change.uri)); Lwt.return ()
       | _ -> Lwt.return ()
 
-    method private refresh_all ~notify_back uri : _ t =
-      let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _result -> Lwt.return ()) in
-      let open Util.Async in
-      async_handler @@ fun () ->
-        match Creusot_manager.get_revdep uri with
-        | None -> ()
-        | Some uri ->
-          notify_back#set_uri uri; (* This is disgusting *)
-          let ft = file_type (DocumentUri.to_path uri) in
-          async (self#update_diagnostics ~notify_back ~ft uri)
-
-    method private update_diagnostics ~notify_back ~ft uri =
-      let* diags = match ft with
-        | Rs ->
-          let* _ =
-            if Creusot_manager.is_orphan (DocumentUri.to_path uri) then return () else
-            let items = Creusot_manager.get_rust_test_items (DocumentUri.to_path uri) in
-            let items = List.map Test_api.yojson_of_test_item items in
-            notify_back#send_notification (Lsp.Server_notification.UnknownNotification
-              (Jsonrpc.Notification.create
-                ~method_:"creusot/testitems"
-                ~params:(Jsonrpc.Structured.t_of_yojson (`List [`String (DocumentUri.to_string uri); `List items]))
-                ()))
-          in
-          return (Creusot_manager.get_rust_diagnostics uri)
-        | Proof -> return (Creusot_manager.get_proof_json_diagnostics uri)
-        | _ -> return [] in
-      notify_back#send_diagnostic diags
-
-    method private _on_doc ~(notify_back : Linol_lwt.Jsonrpc2.notify_back)
-        ?languageId
+    method private _on_doc ~notify_back:(_ : Linol_lwt.Jsonrpc2.notify_back)
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
-        let ft = file_type ~language_id:languageId (DocumentUri.to_path uri) in
-        let () = self#refresh_file ~notify_back uri ~content in
-        self#update_diagnostics ~notify_back ~ft uri
-
-    method private refresh_file ~notify_back:_ (uri : DocumentUri.t) ~content =
-      let path = DocumentUri.to_path uri in
-      Creusot_manager.add_file (String (path, content))
+        let path = DocumentUri.to_path uri in
+        Creusot_manager.add_file (String (path, content));
+        Lwt.return ()
 
     (* We now override the [on_notify_doc_did_open] method that will be called
        by the server each time a new document is opened. *)
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
-      self#_on_doc ~notify_back ~languageId:d.languageId d.uri content
+      self#_on_doc ~notify_back d.uri content
 
     (* Similarly, we also override the [on_notify_doc_did_change] method that will be called
        by the server each time a new document is opened. *)
-    method on_notif_doc_did_change ~notify_back d _c ~old_content:_old
-        ~new_content =
+    method on_notif_doc_did_change ~notify_back d _c ~old_content:_old ~new_content =
       self#_on_doc ~notify_back d.uri new_content
 
     (* On document closes, we remove the state associated to the file from the global
@@ -135,14 +86,23 @@ class lsp_server =
         workDoneProgress = Some false;
       }
 
-    method! on_req_code_lens ~notify_back:_ ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
-      let path = DocumentUri.to_path uri in
-      let lenses = if Filename.check_suffix path ".rs" then
-          Creusot_manager.get_rust_lenses uri
-        else if Filename.check_suffix path ".coma" then
-            Creusot_manager.get_coma_lenses uri
-        else []
-      in return lenses
+    method! on_req_code_lens ~notify_back ~id:_ ~uri ~workDoneToken:_ ~partialResultToken:_ _doc_state =
+      match Creusot_manager.uri_to_file uri with
+      | None -> return []
+      | Some file ->
+        let send_test_items items =
+          let items = List.map Test_api.yojson_of_test_item items in
+              notify_back#send_notification (Lsp.Server_notification.UnknownNotification
+                (Jsonrpc.Notification.create
+                  ~method_:"creusot/testitems"
+                  ~params:(Jsonrpc.Structured.t_of_yojson (`List [`String (DocumentUri.to_string uri); `List items]))
+                  ())) in
+        let option_iter f = function
+          | None -> return ()
+          | Some x -> f x in
+        let* _ = option_iter send_test_items (Creusot_manager.get_test_items file) in
+        let* _ = option_iter notify_back#send_diagnostic (Creusot_manager.get_diagnostics file) in
+        return (Creusot_manager.get_code_lenses file)
 
     method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
 
