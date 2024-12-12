@@ -19,23 +19,10 @@ Creusot IDE consists of two parts:
 
 2. The **Creusot LSP language server**, which must currently be installed separately:
 
+        # First, install Creusot, Why3, and Why3find; see https://github.com/creusot-rs/creusot for instructions
+
         git clone https://github.com/creusot-rs/creusot-ide
-        opam pin creusot-lsp creusot-ide/
-        # Say yes to install creusot-lsp
-
-    Creusot LSP currently depends on development versions of Why3 and Why3find.
-    (Tested with Why3 commit `9c0548a62` and Why3find commit `7f728e9` + temporary [local patch](./why3find.patch))
-
-        git clone https://gitlab.inria.fr/why3/why3
-        opam pin why3 why3#9c0548a62
-
-        git clone https://git.frama-c.com/pub/why3find
-        cd why3find
-        git checkout 7f728e9
-        git apply ../creusot-ide/why3find.patch
-        git commit -am "patch"
-        opam pin why3find .
-        cd ..
+        opam pin creusot-lsp creusot-ide/ -y
 
 ## Features
 
@@ -45,11 +32,17 @@ Creusot IDE helps you nagivate between your Rust sources and the verification ar
     - Functions with proof obligations will have a button in the gutter to their left.
       Click to run the prover (`why3find prove`).
       Alt+click to start Why3 IDE (only if the prover fails).
-- Links in your editor between fragments of Rust code and their counterparts in the generated Coma and proof files.
-- Display hypotheses and goal at various point of the proof.
+- Diagnostics underline locations with failed proofs
 - Syntax highlighting:
     - `.rs` files: Creusot-specific attributes and Pearlite expressions,
     - `.coma` files.
+
+## Commands
+
+Available in the command palette (`Ctrl+P`):
+
+- Restart language server
+- Stop language server
 
 ## Settings
 
