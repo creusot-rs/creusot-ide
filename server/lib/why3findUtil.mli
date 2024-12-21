@@ -47,22 +47,23 @@ val loc_to_range : Why3.Loc.position -> Range.t
 
 (* Exposed for testing *)
 module ProofInfo : sig
-    type goal = {
-      range: Range.t option;
-      expl: string;
-      unproved_subgoals: ProofPath.goal ProofPath.with_theory list;
-    }
-    type t = {
-      coma_file: string;
-      proof_file: string;
-      rust_file: string;
-  
-      (* Typically, location of the function declaration *)
-      entity_range: Range.t;
-  
-      unproved_goals: goal list;
-    }
-  end
+  type goal = {
+    range: Range.t option;
+    expl: string;
+    unproved_subgoals: ProofPath.goal ProofPath.with_theory list;
+  }
+  type t = {
+    coma_file: string;
+    proof_file: string;
+    rust_file: string;
+
+    (* Typically, location of the function declaration *)
+    entity_range: Range.t;
+
+    unproved_goals: goal list;
+  }
+  val pp_info : Format.formatter -> t -> unit
+end
   
 val get_proof_info : Why3find.Config.env -> proof_file:string -> coma_file:string -> ProofInfo.t
 val create_proof_info : Why3find.Config.env -> proof_file:string -> coma_file:string -> unit
