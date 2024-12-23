@@ -133,6 +133,7 @@ class lsp_server =
         | None -> Lwt.return `Null (* error *)
         | Some req ->
           let req = Jsonrpc.Structured.yojson_of_t req in
+          match req with `String _ -> Lwt.return req | _ -> Lwt.return (`String (Yojson.Safe.to_string req))  (*
           match Why3findUtil.ProofPath.qualified_goal_of_json req with
           | None -> Lwt.return (`String "Error: invalid proof path")
           | Some path ->
@@ -140,7 +141,7 @@ class lsp_server =
             let msg = match goal with
             | None -> "No goal found"
             | Some goal -> goal in
-            Lwt.return (`String msg)
+            Lwt.return (`String msg) *)
       )
       | _ -> super#on_unknown_request ~notify_back ~server_request ~id name req
   end

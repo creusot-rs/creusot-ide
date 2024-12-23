@@ -364,7 +364,7 @@ module ProofInfo = struct
   type goal = {
     range: Range.t option;
     expl: string;
-    unproved_subgoals: ProofPath.goal ProofPath.with_theory list;
+    unproved_subgoals: ProofPath.qualified_goal list;
   }
   type t = {
     coma_file: string;
@@ -534,7 +534,13 @@ let diagnostics_of_info info : Diagnostic.t list =
   let mk_diagnostic goal =
     let range = Option.value ~default:info.entity_range goal.range in
     let message = Printf.sprintf "Unproved goal: %s" goal.expl in
-    Diagnostic.create ~source:"Creusot" ~range ~severity:DiagnosticSeverity.Error ~message ()
+    let zero = Position.create ~line:0 ~character:0 in
+    let one = Position.create ~line:0 ~character:1 in
+    let dummy_range = Range.create ~start:zero ~end_:one in
+    let relatedInformation = List.map (fun subgoal -> DiagnosticRelatedInformation.create ~message:"Show task" ~location:(
+      Location.create ~uri:(DocumentUri.t_of_yojson (`String ("why3:" ^ ProofPath.string_of_qualified_goal subgoal))) ~range:dummy_range
+    )) goal.unproved_subgoals in
+    Diagnostic.create ~source:"Creusot" ~range ~severity:DiagnosticSeverity.Error ~message ~relatedInformation ()
   in
   List.map mk_diagnostic info.unproved_goals
 

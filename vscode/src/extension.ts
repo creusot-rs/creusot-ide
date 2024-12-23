@@ -207,12 +207,12 @@ export function activate(context: ExtensionContext) {
   const why3DocProvider = new class implements vscode.TextDocumentContentProvider {
     onDidChangeEmitter = new vscode.EventEmitter<Uri>();
     onDidChange = this.onDidChangeEmitter.event;
-    content = "";
+    content = "TEST CONTENTS";
     newText(newContent) {
       this.content = newContent;
     }
-    provideTextDocumentContent(uri: Uri): string {
-      return this.content;
+    provideTextDocumentContent(uri: Uri): Thenable<string> {
+      return client.sendRequest("creusot/show", uri.toString());
     }
   }
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(why3Scheme, why3DocProvider));
