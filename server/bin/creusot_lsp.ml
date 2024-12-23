@@ -128,19 +128,24 @@ class lsp_server =
 
     method! on_unknown_request ~notify_back ~server_request ~id name req : Yojson.Safe.t t =
       match name with
-      | "creusot/show" -> (
+      | "creusot/showTask" -> (
         match req with
         | None -> Lwt.return `Null (* error *)
         | Some req ->
           let req = Jsonrpc.Structured.yojson_of_t req in
-          match Why3findUtil.ProofPath.qualified_goal_of_json req with
-          | None -> Lwt.return (`String "Error: invalid proof path")
-          | Some path ->
-            let goal = Why3findUtil.get_goal (Why3findUtil.get_env ()) path in
-            let msg = match goal with
-            | None -> "No goal found"
-            | Some goal -> goal in
-            Lwt.return (`String msg)
+          let msg =
+            match req with
+            | `List [`String req] ->
+              (match Why3findUtil.decode_subgoal req with
+              | exception Failure _ -> "Invalid goal (please report to https://github.com/creusot-rs/creusot-ide/issues)\n" ^ req
+              | goal ->
+                let goal = Why3findUtil.get_goal (Why3findUtil.get_env ()) goal in
+                match goal with
+                | None -> "No goal found (perhaps the proofs are out of date)"
+                | Some goal -> goal
+              )
+            | _ -> "Bad request (please report to https://github.com/creusot-rs/creusot-ide/issues)\n" ^ Yojson.Safe.to_string req
+          in Lwt.return (`String msg)
       )
       | _ -> super#on_unknown_request ~notify_back ~server_request ~id name req
   end

@@ -364,7 +364,7 @@ module ProofInfo = struct
   type goal = {
     range: Range.t option;
     expl: string;
-    unproved_subgoals: ProofPath.goal ProofPath.with_theory list;
+    unproved_subgoals: ProofPath.qualified_goal list;
   }
   type t = {
     coma_file: string;
@@ -447,11 +447,11 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
     | exception Sys_error _ ->
       theories |> List.iter (fun th ->
         th.Why3Session.theory_children () |> List.iter (fun g ->
-          g.Why3Session.children "split_vc" |> List.iter (fun g ->
+          g.Why3Session.children "split_vc" |> List.iteri (fun i g ->
             let subgoal = ProofPath.{
               file = coma_file;
               theory = Session.name th.Why3Session.theory;
-              goal_info = { vc = Session.goal_name g.Why3Session.goal; tactics = [] } } in
+              goal_info = { vc = Session.goal_name g.Why3Session.goal; tactics = [("split_vc", i)] } } in
             let expl = Session.goal_expl g.Why3Session.goal in
             let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc g.Why3Session.goal) else None in
             goals := ProofInfo.{ range ; expl ; unproved_subgoals = [subgoal] } :: !goals
@@ -529,24 +529,70 @@ let create_proof_info (env : Config.env) ~proof_file ~coma_file =
     Hashtbl.remove proof_info coma_file; (* Remove old info if it exists *)
     log Error "create_proof_info: %s" (Printexc.to_string e)
 
+(* Hack: the ":why3" suffix is a custom file type to enable syntax highlighting in VSCode
+   (ideally we would be able to tell VSCode to set a language for all virtual documents in the
+   "why3:" scheme) *)
+let encode_subgoal subgoal = Format.asprintf "why3:%s/%s/%a:why3" subgoal.file subgoal.theory ProofPath.pp_goal subgoal.goal_info
+
+let decode_subgoal str =
+  try
+    let str = Util.drop_suffix ~suffix:"%3Awhy3" str in
+    let str = Util.drop_prefix ~prefix:"why3:" str in
+    let str = Uri.pct_decode str in
+    let str, subgoal = split_last '/' str in
+    let file, theory = split_last '/' str in
+    match split_first '.' subgoal with
+    | exception Not_found ->
+      ProofPath.{ file; theory; goal_info = { vc = subgoal; tactics = [] } }
+    | vc, tactics ->
+      let tactics =
+        let[@ocaml.tail_mod_cons] rec loop acc str =
+          let tactic, str = split_first '.' str in
+          match split_first '.' str with
+          | exception Not_found -> List.rev ((tactic, int_of_string str) :: acc)
+          | index, str -> loop ((tactic, int_of_string index) :: acc) str
+        in loop [] tactics in
+      ProofPath.{ file; theory; goal_info = { vc; tactics } }
+  with _ -> failwith "decode_subgoal: expected syntax .*/[^/]*/[^/]*(\\.[^/]*\\.[0-9]*)*"
+
+let dummy_range =
+  let zero = Position.create ~line:0 ~character:0 in
+  let one = Position.create ~line:0 ~character:1 in
+  Range.create ~start:zero ~end_:one
+
 let diagnostics_of_info info : Diagnostic.t list =
   let open ProofInfo in
   let mk_diagnostic goal =
     let range = Option.value ~default:info.entity_range goal.range in
-    let message = Printf.sprintf "Unproved goal: %s" goal.expl in
-    Diagnostic.create ~source:"Creusot" ~range ~severity:DiagnosticSeverity.Error ~message ()
+    let expl = if goal.expl = "" then "(no description)" else goal.expl in
+    let message = Printf.sprintf "Unproved goal: %s" expl in
+    let relatedInformation = goal.unproved_subgoals |> List.map (fun subgoal ->
+      DiagnosticRelatedInformation.create ~message:"Show task" ~location:(
+        Location.create ~uri:(DocumentUri.t_of_yojson (`String (encode_subgoal subgoal))) ~range:dummy_range
+      )) in
+    Diagnostic.create ~source:"Creusot" ~range ~severity:DiagnosticSeverity.Error ~message ~relatedInformation ()
   in
   List.map mk_diagnostic info.unproved_goals
 
 let code_lenses_of_info info : CodeLens.t list =
   let open ProofInfo in
   let range = info.entity_range in
-  let command =
+  let show_tasks =
     if List.is_empty info.unproved_goals then
       Command.create ~title:"QED" ~command:"" ()
     else
       let title = Printf.sprintf "%d unproved goals" (List.length info.unproved_goals) in
-      Command.create ~title ~command:"" ()
+      let locations = info.unproved_goals |> List.concat_map (fun goal ->
+        goal.unproved_subgoals |> List.map (fun subgoal ->
+          Location.create ~uri:(DocumentUri.t_of_yojson (`String (encode_subgoal subgoal))) ~range:dummy_range
+            |> Location.yojson_of_t
+        )) in
+      Command.create ~title ~command:"creusot.peekLocations"
+        ~arguments:[
+          info.rust_file |> DocumentUri.of_path |> DocumentUri.yojson_of_t;
+          Position.(yojson_of_t range.Range.start);
+          `List locations]
+        ()
   in
   let zero = Position.create ~line:0 ~character:0 in
   let zero_range = Range.create ~start:zero ~end_:zero in
@@ -561,13 +607,9 @@ let code_lenses_of_info info : CodeLens.t list =
         `String "gotoAndPeek"]
       ()
   in
-  [ CodeLens.create ~range ~command ();
+  [ CodeLens.create ~range ~command:show_tasks ();
     CodeLens.create ~range ~command:goto_coma ();
   ]
-
-let drop_prefix ~prefix str =
-  if String.starts_with ~prefix str then String.sub str (String.length prefix) (String.length str - String.length prefix)
-  else str
 
 let test_item_of_info info =
   let open ProofInfo in

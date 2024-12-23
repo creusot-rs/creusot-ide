@@ -22,3 +22,5 @@ end
 val walk_dir : ?exclude:string list -> string -> string list
 val split_first : char -> string -> string * string
 val split_last : char -> string -> string * string
+val drop_prefix : prefix:string -> string -> string
+val drop_suffix : suffix:string -> string -> string

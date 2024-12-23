@@ -79,3 +79,11 @@ let split_first c s =
 let split_last c s =
   let i = String.rindex s c in
   (String.sub s 0 i, String.sub s (i + 1) (String.length s - i - 1))
+
+let drop_prefix ~prefix str =
+  if String.starts_with ~prefix str then String.sub str (String.length prefix) (String.length str - String.length prefix)
+  else str
+
+let drop_suffix ~suffix str =
+  if String.ends_with ~suffix str then String.sub str 0 (String.length str - String.length suffix)
+  else str

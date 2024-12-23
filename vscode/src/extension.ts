@@ -205,27 +205,14 @@ export function activate(context: ExtensionContext) {
   /* Virtual document to show Why3 proof context */
   const why3Scheme = 'why3';
   const why3DocProvider = new class implements vscode.TextDocumentContentProvider {
+    // TODO: emit onDidChange events when proofs change
     onDidChangeEmitter = new vscode.EventEmitter<Uri>();
     onDidChange = this.onDidChangeEmitter.event;
-    content = "";
-    newText(newContent) {
-      this.content = newContent;
-    }
-    provideTextDocumentContent(uri: Uri): string {
-      return this.content;
+    provideTextDocumentContent(uri: Uri): Thenable<string> {
+      return client.sendRequest("creusot/showTask", uri.toString());
     }
   }
   context.subscriptions.push(vscode.workspace.registerTextDocumentContentProvider(why3Scheme, why3DocProvider));
-  const virtualFileName = "Task";
-  const uri = vscode.Uri.parse('why3:' + virtualFileName);
-  registerCommand(context, "creusot.showTask", async (arg) => {
-    const msg = client.sendRequest("creusot/show", arg);
-    why3DocProvider.newText(msg);
-    why3DocProvider.onDidChangeEmitter.fire(uri);
-    const doc = await vscode.workspace.openTextDocument(uri);
-    vscode.languages.setTextDocumentLanguage(doc, "coma");
-    await vscode.window.showTextDocument(doc, { preview: false });
-  });
 
   createTests(client);
 
