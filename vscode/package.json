@@ -54,7 +54,7 @@
     "languages": [
       {
         "id": "coma",
-        "extensions": [".coma"],
+        "extensions": [".coma", ":why3"],
         "configuration": "./languages/coma.json"
       },
       {
