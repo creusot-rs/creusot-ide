@@ -1,4 +1,5 @@
-vscode/out
+out
 node_modules
 _build/
 _opam/
+*.vsix

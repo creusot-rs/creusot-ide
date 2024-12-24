@@ -11,7 +11,7 @@
   "categories": [
     "Other"
   ],
-  "icon": "./logo.jpeg",
+  "icon": "vscode/logo.jpeg",
   "activationEvents": [
     "onLanguage:rust",
     "onLanguage:why3session",
@@ -55,7 +55,7 @@
       {
         "id": "coma",
         "extensions": [".coma", ":why3"],
-        "configuration": "./languages/coma.json"
+        "configuration": "vscode/languages/coma.json"
       },
       {
         "id": "why3session",
@@ -93,28 +93,28 @@
         {
             "language": "coma",
             "scopeName": "source.coma",
-            "path": "./syntaxes/coma.json"
+            "path": "vscode/syntaxes/coma.json"
         },
         {
             "language": "pearlite",
             "scopeName": "source.pearlite",
-            "path": "./syntaxes/pearlite.json"
+            "path": "vscode/syntaxes/pearlite.json"
         },
         {
             "scopeName": "source.rust.embedded.creusot",
-            "path": "./syntaxes/creusot-rust.json",
+            "path": "vscode/syntaxes/creusot-rust.json",
             "injectTo": ["source.rust"]
         },
         {
             "scopeName": "source.rust.embedded.pearlite",
-            "path": "./syntaxes/pearlite-rust.json",
+            "path": "vscode/syntaxes/pearlite-rust.json",
             "injectTo": ["source.rust"]
         }
     ]
   },
   "scripts": {
     "vscode:prepublish": "npm run build-base -- --minify",
-    "build-base": "esbuild ./src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
+    "build-base": "esbuild vscode/src/extension.ts --bundle --outfile=out/main.js --external:vscode --format=cjs --platform=node",
     "build": "npm run build-base -- --sourcemap",
     "watch": "npm run build-base -- --sourcemap --watch",
     "test-compile": "tsc -p ./",
