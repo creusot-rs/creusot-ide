@@ -1,0 +1,15 @@
+node_modules
+tsconfig.json
+out/
+vscode/src/
+tsconfig.json
+!out/main.js
+server/
+dune
+dune-project
+creusot-lsp.opam
+creusot-lsp.opam.locked
+.gitignore
+.github/
+.vscode/
+_build/
