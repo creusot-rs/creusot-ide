@@ -73,3 +73,10 @@ val get_test_items : rust_file:string -> Test_api.test_item list
 val refresh_info : rust_file:string -> unit
 val add_coma2 : string -> unit
 val get_rust_source : coma_file:string -> string option
+
+(** [decode_subgoal (uri_to_string (DocumentUri.of_string (encode_subgoal x))) = x]
+   where [uri_to_string] happens in typescript via the [toString()] method
+   (does not percent-decode, so we have to do it in [decode_subgoal]) *)
+val encode_subgoal : ProofPath.qualified_goal -> string
+(** Throws Failure *)
+val decode_subgoal : string -> ProofPath.qualified_goal
