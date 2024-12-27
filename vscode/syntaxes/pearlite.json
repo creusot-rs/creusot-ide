@@ -131,6 +131,7 @@
             "endCaptures": {
                 "0": { "name": "comment.block.end" }
             },
+            "contentName": "comment.block",
             "patterns": [
                 { "include": "#block-comments" }
             ]
