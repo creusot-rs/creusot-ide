@@ -7,7 +7,7 @@
             "end": "\\]",
             "contentName": "meta.embedded.creusot source.creusot",
             "patterns": [
-                { "match": "\\b(?:predicate|open|law|logic|trusted|prophetic)\\b",
+                { "match": "\\b(?:predicate|open|law|logic|trusted)\\b",
                   "name": "keyword" },
                 { "include": "#paren" },
                 { "include": "#string" }
@@ -15,6 +15,10 @@
         }
     ],
     "repository": {
+        "innerkeywords": {
+            "match": "\\b(?:prophetic|self)\\b",
+            "name": "keyword"
+        },
         "paren": {
             "patterns": [
                 { "include": "#parentheses" },
@@ -32,6 +36,7 @@
                 "0": { "name": "punctuation.section.parens.end" }
             },
             "patterns": [
+                { "include": "#innerkeywords" },
                 { "include": "#paren" }
             ]
         },
