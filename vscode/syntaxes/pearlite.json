@@ -8,6 +8,7 @@
         "expr": {
             "patterns": [
                 { "include": "#keyword" },
+                { "include": "#mut" },
                 { "include": "#constructor"},
                 { "include": "#quantifier" },
                 { "include": "#braces" },
@@ -21,12 +22,16 @@
             ]
         },
         "special": {
-            "match": "[@*^]",
+            "match": "[@*^&]",
             "name": "keyword.operator"
         },
         "keyword": {
             "match": "\\b(?:if|else|match)\\b",
             "name": "keyword.control"
+        },
+        "mut": {
+            "match": "\\bmut\\b",
+            "name": "storage.modifier"
         },
         "constant": {
             "match": "\\b(?:true|false)\\b",
@@ -86,7 +91,15 @@
             "patterns": [
                 { "include": "#typename" },
                 { "include": "#stdtype" },
-                { "include": "#generic-type" }
+                { "include": "#generic-type" },
+                {
+                    "match": "\\bmut\\b",
+                    "name": "storage.modifier"
+                },
+                {
+                    "match": "&",
+                    "name": "keyword.operator"
+                }
             ]
         },
         "constructor": {
