@@ -8,12 +8,16 @@
         "expr": {
             "patterns": [
                 { "include": "#keyword" },
+                { "include": "#other-keyword" },
                 { "include": "#mut" },
                 { "include": "#constructor"},
                 { "include": "#quantifier" },
                 { "include": "#braces" },
                 { "include": "#parentheses" },
                 { "include": "#brackets" },
+                { "include": "#self" },
+                { "include": "#function" },
+                { "include": "#namespace" },
                 { "include": "#identifier" },
                 { "include": "#number" },
                 { "include": "#special" },
@@ -22,7 +26,7 @@
             ]
         },
         "special": {
-            "match": "[@*^&]",
+            "match": "\\|\\||&&|==>|==|!=|<=|>=|[@*^&<>/!-]",
             "name": "keyword.operator"
         },
         "keyword": {
@@ -32,6 +36,10 @@
         "mut": {
             "match": "\\bmut\\b",
             "name": "storage.modifier"
+        },
+        "other-keyword": {
+            "match": "\\blet\\b",
+            "name": "storage.type.rust"
         },
         "constant": {
             "match": "\\b(?:true|false)\\b",
@@ -122,6 +130,18 @@
             "patterns": [
                 { "include": "#type" }
             ]
+        },
+        "self": {
+            "match": "\\b[sS]elf\\b",
+            "name": "variable.language.self.rust"
+        },
+        "function": {
+            "match": "\\b[a-zA-Z][a-zA-Z0-9_']*\\b(?=(?:\\(|::<))",
+            "name": "entity.name.function.pearlite"
+        },
+        "namespace": {
+            "match": "\\b[a-zA-Z][a-zA-Z0-9_']*\\b(?=::[^a-zA-Z])",
+            "name": "entity.name.namespace.pearlite"
         },
         "identifier": {
             "match": "\\b[a-zA-Z][a-zA-Z0-9_']*\\b",
