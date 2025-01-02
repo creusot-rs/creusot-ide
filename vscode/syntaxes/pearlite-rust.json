@@ -3,9 +3,9 @@
     "injectionSelector": "L:source.rust -string -comment",
     "patterns": [
         {
-            "begin": "\\b(proof_assert|pearlite)\\s*(!)\\s*\\{",
+            "begin": "\\b(proof_assert|pearlite|snapshot)\\s*(!)\\s*\\{",
             "end": "\\}",
-            "contentName": "meta.embedded.macro.proof_assert source.pearlite",
+            "contentName": "meta.embedded.macro.pearlite source.pearlite",
             "beginCaptures": {
                 "1": { "name": "keyword" },
                 "2": { "name": "keyword" }
@@ -15,9 +15,9 @@
             ]
         },
         {
-            "begin": "\\b(proof_assert|pearlite)\\s*(!)\\s*\\(",
+            "begin": "\\b(proof_assert|pearlite|snapshot)\\s*(!)\\s*\\(",
             "end": "\\)",
-            "contentName": "meta.embedded.macro.proof_assert source.pearlite",
+            "contentName": "meta.embedded.macro.pearlite source.pearlite",
             "beginCaptures": {
                 "1": { "name": "keyword" },
                 "2": { "name": "keyword" }
@@ -27,9 +27,9 @@
             ]
         },
         {
-            "begin": "\\b(proof_assert|pearlite)\\s*(!)\\s*\\[",
+            "begin": "\\b(proof_assert|pearlite|snapshot)\\s*(!)\\s*\\[",
             "end": "\\]",
-            "contentName": "meta.embedded.macro.proof_assert source.pearlite",
+            "contentName": "meta.embedded.macro.pearlite source.pearlite",
             "beginCaptures": {
                 "1": { "name": "keyword" },
                 "2": { "name": "keyword" }
@@ -39,7 +39,7 @@
             ]
         },
         {
-            "match": "\\b(proof_assert|pearlite)\\s*(!)",
+            "match": "\\b(proof_assert|pearlite|snapshot)\\s*(!)",
             "captures": {
                 "1": { "name": "keyword" },
                 "2": { "name": "keyword" }
