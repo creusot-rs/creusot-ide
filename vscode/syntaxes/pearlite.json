@@ -7,6 +7,8 @@
     "repository": {
         "expr": {
             "patterns": [
+                { "include": "#line-comments" },
+                { "include": "#block-comments" },
                 { "include": "#keyword" },
                 { "include": "#other-keyword" },
                 { "include": "#mut" },
@@ -20,9 +22,7 @@
                 { "include": "#namespace" },
                 { "include": "#identifier" },
                 { "include": "#number" },
-                { "include": "#special" },
-                { "include": "#line-comments" },
-                { "include": "#block-comments" }
+                { "include": "#special" }
             ]
         },
         "special": {
