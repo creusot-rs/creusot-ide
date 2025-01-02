@@ -60,10 +60,10 @@
             "begin": "{",
             "end": "}",
             "beginCaptures": {
-                "0": { "name": "punctuation.section.braces.begin" }
+                "0": { "name": "punctuation.brackets.curly.rust" }
             },
             "endCaptures": {
-                "0": { "name": "punctuation.section.braces.end" }
+                "0": { "name": "punctuation.brackets.curly.rust" }
             },
             "patterns": [
                 { "include": "#expr" }
@@ -73,10 +73,10 @@
             "begin": "\\(",
             "end": "\\)",
             "beginCaptures": {
-                "0": { "name": "punctuation.section.parens.begin" }
+                "0": { "name": "punctuation.brackets.round.rust" }
             },
             "endCaptures": {
-                "0": { "name": "punctuation.section.parens.end" }
+                "0": { "name": "punctuation.brackets.round.rust" }
             },
             "patterns": [
                 { "include": "#expr" }
@@ -86,13 +86,26 @@
             "begin": "\\[",
             "end": "\\]",
             "beginCaptures": {
-                "0": { "name": "punctuation.section.brackets.begin" }
+                "0": { "name": "punctuation.brackets.square.rust" }
             },
             "endCaptures": {
-                "0": { "name": "punctuation.section.brackets.end" }
+                "0": { "name": "punctuation.brackets.square.rust" }
             },
             "patterns": [
                 { "include": "#expr" }
+            ]
+        },
+        "angle-brackets": {
+            "begin": "<",
+            "end": ">",
+            "beginCaptures": {
+                "0": { "name": "punctuation.brackets.angle.rust" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.brackets.angle.rust" }
+            },
+            "patterns": [
+                { "include": "#type" }
             ]
         },
         "type": {
@@ -100,6 +113,7 @@
                 { "include": "#typename" },
                 { "include": "#stdtype" },
                 { "include": "#generic-type" },
+                { "include": "#angle-brackets" },
                 {
                     "match": "\\bmut\\b",
                     "name": "storage.modifier"
