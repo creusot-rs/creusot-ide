@@ -9,6 +9,7 @@
  (depends
   "why3"
   "why3find"
+  "dune-build-info"
   ("lsp" (>= 1.20))
   "lwt"
   "linol"
