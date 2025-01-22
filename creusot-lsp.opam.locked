@@ -7,7 +7,6 @@ authors: "Li-yao Xia"
 homepage: "https://github.com/creusot-rs/creusot-ide"
 depends: [
   "angstrom" {= "0.16.1"}
-  "astring" {= "0.8.5"}
   "atomic" {= "base"}
   "base" {= "v0.17.1"}
   "base-bigarray" {= "base"}
@@ -17,13 +16,11 @@ depends: [
   "base-threads" {= "base"}
   "base-unix" {= "base"}
   "bigstringaf" {= "0.10.0"}
-  "camlp-streams" {= "5.0.1"}
   "camlzip" {= "1.13"}
-  "chrome-trace" {= "3.17.1"}
   "cmdliner" {= "1.3.0"}
   "conf-autoconf" {= "0.2"}
   "conf-gmp" {= "4"}
-  "conf-pkg-config" {= "3"}
+  "conf-pkg-config" {= "4"}
   "conf-zlib" {= "1"}
   "conf-zmq" {= "0.1"}
   "cppo" {= "1.8.0"}
@@ -32,43 +29,33 @@ depends: [
   "dune-build-info" {= "3.17.1"}
   "dune-configurator" {= "3.17.1"}
   "dune-private-libs" {= "3.17.1"}
-  "dune-rpc" {= "3.17.1"}
   "dune-site" {= "3.17.1"}
   "dyn" {= "3.17.1"}
-  "fiber" {= "3.7.0"}
   "fmt" {= "0.9.0"}
-  "host-arch-x86_64" {= "1"}
-  "host-system-other" {= "1"}
   "ISO8601" {= "0.2.6"}
   "jane-street-headers" {= "v0.17.0"}
   "jsonm" {= "1.0.2"}
-  "jsonrpc" {= "1.17.0"}
+  "jsonrpc" {= "1.20.1"}
   "jst-config" {= "v0.17.0"}
-  "linol" {= "0.7"}
-  "linol-lwt" {= "0.7"}
+  "linol" {= "0.8"}
+  "linol-lwt" {= "0.8"}
   "logs" {= "0.7.0"}
-  "lsp" {= "1.17.0"}
+  "lsp" {= "1.20.1"}
   "lwt" {= "5.9.0"}
   "menhir" {= "20240715"}
   "menhirCST" {= "20240715"}
   "menhirLib" {= "20240715"}
   "menhirSdk" {= "20240715"}
-  "merlin-lib" {= "5.3-502"}
-  "mtime" {= "2.1.0"}
   "num" {= "1.5-1"}
   "ocaml" {= "5.2.1"}
   "ocaml-base-compiler" {= "5.2.1"}
   "ocaml-compiler-libs" {= "v0.17.0"}
   "ocaml-config" {= "3"}
-  "ocaml-index" {= "1.1"}
-  "ocaml-lsp-server" {= "1.18.0~5.2preview"}
   "ocaml-options-vanilla" {= "1"}
   "ocaml-syntax-shims" {= "1.0.0"}
   "ocaml_intrinsics_kernel" {= "v0.17.1"}
   "ocamlbuild" {= "0.15.0"}
-  "ocamlc-loc" {= "3.17.1"}
   "ocamlfind" {= "1.9.6"}
-  "ocamlformat-rpc-lib" {= "0.27.0"}
   "ocplib-endian" {= "1.2"}
   "octavius" {= "1.2.2"}
   "ordering" {= "3.17.1"}
@@ -91,13 +78,11 @@ depends: [
   "ppx_sexp_conv" {= "v0.17.0"}
   "ppx_yojson_conv" {= "v0.17.0"}
   "ppx_yojson_conv_lib" {= "v0.17.0"}
-  "ppxlib" {= "0.33.0"}
+  "ppxlib" {= "0.34.0"}
   "ppxlib_jane" {= "v0.17.0"}
-  "re" {= "1.12.0"}
   "seq" {= "base"}
   "sexplib" {= "v0.17.0"}
   "sexplib0" {= "v0.17.0"}
-  "spawn" {= "v0.17.0"}
   "stdio" {= "v0.17.0"}
   "stdlib-shims" {= "0.3.0"}
   "stdune" {= "3.17.1"}
@@ -106,12 +91,11 @@ depends: [
   "time_now" {= "v0.17.0"}
   "toml" {= "7.1.0"}
   "topkg" {= "1.0.7"}
-  "trace" {= "0.8"}
+  "trace" {= "0.9"}
   "uri" {= "4.4.0"}
   "uutf" {= "1.0.3"}
-  "why3" {= "1.7.2"}
-  "why3find" {= "1.0.0+dev"}
-  "xdg" {= "3.17.1"}
+  "why3" {= "1.8.0"}
+  "why3find" {= "1.1.1+dev"}
   "xmlm" {= "1.4.0"}
   "yojson" {= "2.2.2"}
   "zarith" {= "1.14"}
@@ -132,9 +116,6 @@ build: [
   ]
 ]
 pin-depends: [
-  ["why3.1.7.2" "git+https://gitlab.inria.fr/why3/why3.git/#master"]
-  [
-    "why3find.1.0.0+dev"
-    "git+https://git.frama-c.com/pub/why3find.git/#why3-master"
-  ]
+  ["why3.1.8.0" "git+https://gitlab.inria.fr/why3/why3.git/#HEAD"]
+  ["why3find.1.1.1+dev" "git+https://git.frama-c.com/pub/why3find.git/#master"]
 ]
