@@ -565,7 +565,7 @@ let diagnostics_of_info info : Diagnostic.t list =
   let mk_diagnostic goal =
     let range = Option.value ~default:info.entity_range goal.range in
     let expl = if goal.expl = "" then "(no description)" else goal.expl in
-    let message = Printf.sprintf "Unproved goal: %s" expl in
+    let message = `String (Printf.sprintf "Unproved goal: %s" expl) in
     let relatedInformation = goal.unproved_subgoals |> List.map (fun subgoal ->
       DiagnosticRelatedInformation.create ~message:"Show task" ~location:(
         Location.create ~uri:(DocumentUri.t_of_yojson (`String (encode_subgoal subgoal))) ~range:dummy_range

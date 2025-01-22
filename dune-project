@@ -9,7 +9,7 @@
  (depends
   "why3"
   "why3find"
-  "ocaml-lsp-server"
+  ("lsp" (>= 1.20))
   "lwt"
   "linol"
   "linol-lwt"
