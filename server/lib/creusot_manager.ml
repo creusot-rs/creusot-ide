@@ -422,7 +422,7 @@ let get_proof_json_diagnostics file : Diagnostic.t list =
           add_diagnostic (Diagnostic.create
             ~range
             ~source:"Creusot"
-            ~message:(short_string_of_goal goal)
+            ~message:(`String (short_string_of_goal goal))
             ~severity:DiagnosticSeverity.Error
             ())
         )
