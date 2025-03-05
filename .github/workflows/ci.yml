@@ -23,6 +23,9 @@ jobs:
       - name: Checkout tree
         uses: actions/checkout@v4
 
+      - run: sudo apt update
+        if: matrix.os == 'ubuntu-latest'
+
       - name: Set-up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
