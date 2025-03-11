@@ -52,26 +52,6 @@ Available in the command palette (`Ctrl+P`):
 
 ### Compatibility with standard Rust tools (Rust analyzer, etc.)
 
-- How to build projects verified by Creusot.
-
-    Creusot implicitly enables some unstable features to verify programs.
-    When building programs with `cargo build`, they must be enabled explicitly with the following
-    attribute in the root `lib.rs`:
-
-    ```rust
-    #![cfg_attr(not(creusot),feature(stmt_expr_attributes,proc_macro_hygiene))]
-    ```
-
-    Linters will then warn that `creusot` is an unknown parameter. To silence the warning,
-    add this option to `Cargo.toml`:
-
-    ```toml
-    [lints.rust]
-    unexpected_cfgs = { level = "warn", check-cfg = ['cfg(creusot)'] }
-    ```
-
-    This issue is being tracked at https://github.com/creusot-rs/creusot/issues/1000
-
 - Rust analyzer doesn't know how to parse Creusot specifications (attributes such as `ensures`, etc.),
     so they are underlined in red.
 
