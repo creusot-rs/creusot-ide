@@ -85,3 +85,13 @@ Available in the command palette (`Ctrl+P`):
             "--message-format=json"
         ]
     ```
+
+## Developers' corner
+
+To build and install the VS Code extension from source:
+
+```
+npx vsce package
+```
+
+Then, in VS Code: Command Palette > Install from VSIX. Select the `creusot-ide-X.Y.Z.vsix` file created by the previous command.
