@@ -248,7 +248,7 @@ let load_config ?(root = ".") ?(warn = true) =
   let config = Config.load_config root in
   if warn then (
     (match config.packages with
-    | [] -> log Warning "No package found in config \"why3find.json\", at least prelude is needed for creusot proofs"
+    | [] -> log Warning "No package found in config \"why3find.json\", at least \"creusot\" is needed"
     | _ -> ());
     let check_warning w =
       if not (List.mem w config.warnoff) then
