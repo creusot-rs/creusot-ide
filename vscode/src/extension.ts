@@ -1,7 +1,9 @@
 import { workspace, ExtensionContext, Range, Uri, window } from "vscode";
 import * as vscode from "vscode";
 import child_process from "child_process";
-import process from "process";
+import process, { env } from "process";
+import path from "path";
+import os from "os";
 
 import {
   LanguageClient,
@@ -9,10 +11,19 @@ import {
   Executable,
 } from "vscode-languageclient/node";
 
+// Default install location of Creusot
+function getDefaultLSPPath(): string {
+  if (process.platform == 'darwin') {
+    return path.join(os.homedir(), '.creusot', '_opam', 'bin', "creusot-lsp");
+  } else {
+    return path.join(env.XDG_DATA_HOME || path.join(os.homedir(), ".local", "share"), "creusot", "_opam", "bin", "creusot-lsp");
+  }
+}
+
 function getServerExecutable(context): Executable {
   const lspPath: string | undefined = workspace.getConfiguration("creusot").get("lspPath");
   if (lspPath === undefined || lspPath === "") {
-    return { command: "creusot-lsp" };
+    return { command: getDefaultLSPPath() };
   } else {
     return { command: lspPath };
   }
