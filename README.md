@@ -19,10 +19,21 @@ Creusot IDE consists of two parts:
 
 2. The **Creusot LSP language server**, which must currently be installed separately:
 
-        # First, install Creusot, Why3, and Why3find; see https://github.com/creusot-rs/creusot for instructions
+    1. First, install Creusot, Why3, and Why3find; see https://github.com/creusot-rs/creusot for instructions
 
-        git clone https://github.com/creusot-rs/creusot-ide
-        opam pin creusot-lsp creusot-ide/ -y
+    2. `git clone https://github.com/creusot-rs/creusot-ide`
+
+    3. The installation location is the Creusot-local switch, which depends on your OS.
+
+        On Linux:
+
+            opam pin --switch=~/.local/share/creusot creusot-lsp creusot-ide/ -y
+
+        On MacOS:
+
+            opam pin --switch=~/.creusot creusot-lsp creusot-ide/ -y
+
+At the moment, installing `creusot-lsp` in another switch or without opam altogether is not supported.
 
 ## Features
 
