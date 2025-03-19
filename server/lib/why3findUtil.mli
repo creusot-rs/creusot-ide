@@ -38,10 +38,10 @@ open ProofPath
 val parse_json : coma:string -> (theory -> unit) -> Jsonm.decoder -> unit
 val read_proof_json : coma:string -> source -> theory list
 
-val get_env : unit -> Why3find.Config.env
-val get_test_env : unit -> Why3find.Config.env
-val get_goal : Why3find.Config.env -> ProofPath.qualified_goal -> string option
-val get_goal_loc : Why3find.Config.env -> ProofPath.qualified_goal -> Why3.Loc.position option
+val get_env : unit -> Why3find.Project.env
+val get_test_env : unit -> Why3find.Project.env
+val get_goal : Why3find.Project.env -> ProofPath.qualified_goal -> string option
+val get_goal_loc : Why3find.Project.env -> ProofPath.qualified_goal -> Why3.Loc.position option
 
 val loc_to_range : Why3.Loc.position -> Range.t
 
@@ -65,8 +65,8 @@ module ProofInfo : sig
   val pp_info : Format.formatter -> t -> unit
 end
   
-val get_proof_info : Why3find.Config.env -> proof_file:string -> coma_file:string -> ProofInfo.t
-val create_proof_info : Why3find.Config.env -> proof_file:string -> coma_file:string -> unit
+val get_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> ProofInfo.t
+val create_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> unit
 val get_diagnostics : rust_file:string -> Diagnostic.t list
 val get_lenses : rust_file:string -> CodeLens.t list
 val get_test_items : rust_file:string -> Test_api.test_item list
