@@ -240,7 +240,7 @@ let load_plugins =
   fun env ->
     if !once then (
       once := false;
-      Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.Config.wenv.config
+      Why3.Whyconf.load_plugins @@ Why3.Whyconf.get_main env.Why3find.Project.why3.config
     )
 
 let load_config ?(root = ".") ?(warn = true) =
@@ -265,7 +265,7 @@ let load_config ?(root = ".") ?(warn = true) =
 
 let get_env () =
   let config = load_config () in
-  let env = Config.create_env ~config () in
+  let env = Why3find.Project.create ~config () in
   load_plugins env;
   env
 
@@ -273,7 +273,7 @@ let get_env () =
 let get_test_env () =
   let root = "../testdata" in
   let config = load_config ~root ~warn:false () in
-  let env = Config.create_env ~root ~config () in
+  let env = Why3find.Project.create ~root ~config () in
   load_plugins env;
   env
 
@@ -298,17 +298,16 @@ let warn_if_none msg x = (match x with
   | None -> log Warning "%s" msg
   | Some _ -> ()); x
 
-let for_goal (env : _) (q : qualified_goal) (f : Session.goal -> 'a option) : 'a option =
+let for_goal (env : Why3find.Project.env) (q : qualified_goal) (f : Session.goal -> 'a option) : 'a option =
   try
-    let session = true in
     let file = q.file in
     let (let+) = Option.bind in
-    let theories, format = Wutil.load_theories env.Config.wenv.env file in
+    let theories, format = Wutil.load_theories env.why3.env file in
     let dir, _lib = Wutil.filepath file in
-    let s = Why3find.Session.create ~session ~dir ~file ~format theories in
+    let s = Why3find.Session.create ~dir ~file ~format theories in
     let+ theory = List.find_opt (fun t -> Session.name t = q.theory) (Session.theories s) |> warn_if_none (Printf.sprintf "theory %s not found" q.theory) in
     let+ goal = List.find_opt (fun g -> Session.goal_name g = q.goal_info.vc) (Session.split theory) |> warn_if_none (Printf.sprintf "vc %s not found" q.goal_info.vc) in
-    let+ goal = path_goal ~theory:(Session.name theory) env.wenv.env goal q.goal_info.tactics in
+    let+ goal = path_goal ~theory:(Session.name theory) env.why3.env goal q.goal_info.tactics in
     f goal
   with e -> log Error "get_goal: Failed to load why3: %s" (Printexc.to_string e); None
 
@@ -349,14 +348,13 @@ let rec get_goal_ (env : Why3.Env.env) (goal : Session.goal) : Why3Session.goal 
       | Some goals -> List.map (get_goal_ env) goals
   }
 
-let get_session (env : _) (coma_file : string) : Why3Session.theory list =
+let get_session (env : Why3find.Project.env) (coma_file : string) : Why3Session.theory list =
   let open Why3Session in
-  let session = true in
-  let theories, format = Wutil.load_theories env.Config.wenv.env coma_file in
+  let theories, format = Wutil.load_theories env.why3.env coma_file in
   let dir, _lib = Wutil.filepath coma_file in
-  let s = Why3find.Session.create ~session ~dir ~file:coma_file ~format theories in
+  let s = Why3find.Session.create ~dir ~file:coma_file ~format theories in
   Session.theories s |> List.map (fun theory -> { theory; theory_children = fun () ->
-    Session.split theory |> List.map (fun g -> get_goal_ env.wenv.env g) })
+    Session.split theory |> List.map (fun g -> get_goal_ env.why3.env g) })
 
 (**)
 
@@ -519,7 +517,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
 
 let proof_info : (string, ProofInfo.t) Hashtbl.t = Hashtbl.create 10
 
-let create_proof_info (env : Config.env) ~proof_file ~coma_file =
+let create_proof_info (env : Why3find.Project.env) ~proof_file ~coma_file =
   log Debug "create_proof_info %s" coma_file;
   match get_proof_info env ~proof_file ~coma_file with
   | info ->
