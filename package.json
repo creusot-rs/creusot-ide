@@ -20,14 +20,14 @@
   "main": "./out/main.js",
   "contributes": {
     "configuration": {
-        "title": "Creusot",
-        "properties": {
-            "creusot.lspPath": {
-                "type": "string",
-                "default": "",
-                "description": "Path to the creusot-lsp executable"
-            }
+      "title": "Creusot",
+      "properties": {
+        "creusot.lspPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the creusot-lsp executable"
         }
+      }
     },
     "commands": [
       {
@@ -54,20 +54,29 @@
     "languages": [
       {
         "id": "coma",
-        "extensions": [".coma", ":why3"],
+        "extensions": [
+          ".coma",
+          ":why3"
+        ],
         "configuration": "vscode/languages/coma.json"
       },
       {
         "id": "why3session",
-        "filenames": ["why3session.xml"]
+        "filenames": [
+          "why3session.xml"
+        ]
       },
       {
         "id": "rust",
-        "extensions": [".rs"]
+        "extensions": [
+          ".rs"
+        ]
       },
       {
         "id": "why3proof",
-        "filenames": ["proof.json"]
+        "filenames": [
+          "proof.json"
+        ]
       },
       {
         "id": "creusot"
@@ -77,39 +86,43 @@
       }
     ],
     "taskDefinitions": [
-        {
-            "type": "creusot"
-        }
+      {
+        "type": "creusot"
+      }
     ],
     "menus": {
-        "editor/context": [
-            {
-                "command": "creusot.why3ide",
-                "group": "2_creusot"
-            }
-        ]
+      "editor/context": [
+        {
+          "command": "creusot.why3ide",
+          "group": "2_creusot"
+        }
+      ]
     },
     "grammars": [
-        {
-            "language": "coma",
-            "scopeName": "source.coma",
-            "path": "vscode/syntaxes/coma.json"
-        },
-        {
-            "language": "pearlite",
-            "scopeName": "source.pearlite",
-            "path": "vscode/syntaxes/pearlite.json"
-        },
-        {
-            "scopeName": "source.rust.embedded.creusot",
-            "path": "vscode/syntaxes/creusot-rust.json",
-            "injectTo": ["source.rust"]
-        },
-        {
-            "scopeName": "source.rust.embedded.pearlite",
-            "path": "vscode/syntaxes/pearlite-rust.json",
-            "injectTo": ["source.rust"]
-        }
+      {
+        "language": "coma",
+        "scopeName": "source.coma",
+        "path": "vscode/syntaxes/coma.json"
+      },
+      {
+        "language": "pearlite",
+        "scopeName": "source.pearlite",
+        "path": "vscode/syntaxes/pearlite.json"
+      },
+      {
+        "scopeName": "source.rust.embedded.creusot",
+        "path": "vscode/syntaxes/creusot-rust.json",
+        "injectTo": [
+          "source.rust"
+        ]
+      },
+      {
+        "scopeName": "source.rust.embedded.pearlite",
+        "path": "vscode/syntaxes/pearlite-rust.json",
+        "injectTo": [
+          "source.rust"
+        ]
+      }
     ]
   },
   "scripts": {
@@ -129,12 +142,12 @@
     "@types/vscode": "^1.65.0",
     "@typescript-eslint/eslint-plugin": "^5.55.0",
     "@typescript-eslint/parser": "^5.55.0",
-    "esbuild": "^0.17.11",
+    "@vscode/vsce": "^3.1.0",
+    "esbuild": "^0.25.1",
     "eslint": "^7.21.0",
     "js-yaml": "^4.1.0",
     "ovsx": "^0.8.0",
     "prettier": "2.8.4",
-    "typescript": "^4.2.2",
-    "@vscode/vsce": "^3.1.0"
+    "typescript": "^4.2.2"
   }
 }
