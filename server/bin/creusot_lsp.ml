@@ -74,10 +74,8 @@ class lsp_server =
     method on_notif_doc_did_open ~notify_back d ~content : unit Linol_lwt.t =
       self#_on_doc ~notify_back d.uri content
 
-    (* Similarly, we also override the [on_notify_doc_did_change] method that will be called
-       by the server each time a new document is opened. *)
-    method on_notif_doc_did_change ~notify_back d _c ~old_content:_old ~new_content =
-      self#_on_doc ~notify_back d.uri new_content
+    method on_notif_doc_did_change ~notify_back:_ _d _c ~old_content:_ ~new_content:_ =
+      Lwt.return ()
 
     (* On document closes, we remove the state associated to the file from the global
        hashtable state, to avoid leaking memory. *)
