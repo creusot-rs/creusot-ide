@@ -106,7 +106,7 @@ class lsp_server =
         let* _ = option_iter notify_back#send_diagnostic (Creusot_manager.get_diagnostics file) in
         return (Creusot_manager.get_code_lenses file)
 
-    method! config_inlay_hints = Some (`InlayHintOptions (InlayHintOptions.create ()))
+    method! config_inlay_hints = None (* Some (`InlayHintOptions (InlayHintOptions.create ())) *)
 
     method! on_req_inlay_hint ~notify_back:_ ~id:_ ~uri ~range:_ () =
       let path = DocumentUri.to_path uri in
