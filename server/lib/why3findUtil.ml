@@ -480,9 +480,15 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
                   | `Null -> "", [] (* completed goal *)
                   | `String tactic ->
                     let children' = match member "children" json with
-                    | `List children' -> children'
-                    | _ -> failwith "Bad \"children\" field" in
-                    tactic, List.combine (g.Why3Session.children tactic) children'
+                      | `List children' -> children'
+                      | _ -> failwith "Bad \"children\" field" in
+                    (* Generate empty proofs if there are more Why3 subgoals than proofs from the proof.json
+                       (we can't use List.combine because it throws an exception when lists don't have the same length) *)
+                    let rec combine goals proofs = match goals, proofs with
+                      | [], _ -> []
+                      | goals, [] -> List.map (fun g -> g, `Null) goals
+                      | goal :: goals, proof :: proofs -> (goal, proof) :: combine goals proofs in
+                    tactic, combine (g.Why3Session.children tactic) children'
                   | _ -> failwith "Bad \"tactic\" field")
                 | _ -> failwith "Bad goal object"
               in
