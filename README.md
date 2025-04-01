@@ -78,7 +78,7 @@ Available in the command palette (`Ctrl+P`):
 
 ## Settings
 
-- `creusot.lspPath`: Path to the `creusot-lsp` executable. Default: `""`, to find the executable in `PATH`.
+- `creusot.lspPath`: Path to the `creusot-lsp` executable. Default: `""`, finding the executable in Creusot's Opam switch.
 
 ## Developers' corner
 
