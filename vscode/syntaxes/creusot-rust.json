@@ -7,7 +7,7 @@
             "end": "\\]",
             "contentName": "meta.embedded.creusot source.creusot",
             "patterns": [
-                { "match": "\\b(?:predicate|open|law|logic|trusted|pure|bitwise_proof)\\b",
+                { "match": "\\b(?:predicate|open|law|logic|trusted|pure|bitwise_proof|terminates)\\b",
                   "name": "keyword" },
                 { "include": "#paren" },
                 { "include": "#string" }
