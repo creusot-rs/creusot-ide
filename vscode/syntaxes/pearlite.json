@@ -162,7 +162,7 @@
             "name": "variable"
         },
         "number": {
-            "match": "\\b(?:0x)?[0-9]+\\b",
+            "match": "\\b(?:[0-9]+|0x[0-9a-fA-F]+)(?:int|[ui](?:8|16|32|64|128|256|size))?\\b",
             "name": "constant.numeric"
         },
         "line-comments": {
