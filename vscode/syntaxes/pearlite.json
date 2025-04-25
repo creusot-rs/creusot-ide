@@ -133,7 +133,7 @@
             "name": "entity.name.type.rust"
         },
         "stdtype": {
-            "match": "(?<![A-Za-z])(?:f32|f64|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize)\\b",
+            "match": "(?<![A-Za-z])(?:f32|f64|i8|i16|i32|i64|u8|u16|u32|u64|isize|usize|char|str)\\b",
             "name": "entity.name.type.numeric.rust"
         },
         "generic-type": {
