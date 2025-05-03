@@ -12,7 +12,7 @@
   "dune-build-info"
   ("lsp" (>= 1.20))
   "lwt"
-  "linol"
+  ("linol" (= 0.9))
   "linol-lwt"
   "toml"
   "xmlm"
