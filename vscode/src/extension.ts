@@ -20,13 +20,29 @@ function getDefaultLSPPath(): string {
   }
 }
 
+function creusotLspPath(): string {
+   return workspace.getConfiguration("creusot").get("lspPath") || ""
+}
+
+function creusotHome(): string {
+   return workspace.getConfiguration("creusot").get("home") || ""
+}
+
+function creusotDataHome(): string {
+   return workspace.getConfiguration("creusot").get("dataHome") || ""
+}
+
+function creusotConfigHome(): string {
+   return workspace.getConfiguration("creusot").get("configHome") || ""
+}
+
+function getLspPath(): string {
+  const lspPath: string = creusotLspPath();
+  return lspPath === "" ? getDefaultLSPPath() : lspPath;
+}
+
 function getServerExecutable(context): Executable {
-  const lspPath: string | undefined = workspace.getConfiguration("creusot").get("lspPath");
-  if (lspPath === undefined || lspPath === "") {
-    return { command: getDefaultLSPPath() };
-  } else {
-    return { command: lspPath };
-  }
+  return { command: getLspPath() }
 }
 
 const languages = [
@@ -116,15 +132,32 @@ async function createTests(client: LanguageClient) {
           // Save the rust file
           if (test.uri) { await vscode.workspace.save(test.uri); }
           process.chdir(rootPath);
+          const options: child_process.SpawnSyncOptions = {};
+          const home = creusotHome();
+          const dataHome = creusotDataHome();
+          const configHome = creusotConfigHome();
+          if (home !== "" || dataHome !== "" || configHome !== "") {
+            const env = { ...process.env };
+            if (home !== "") {
+              env.HOME = home;
+            }
+            if (dataHome !== "") {
+              env.XDG_DATA_HOME = home;
+            }
+            if (configHome !== "") {
+              env.XDG_CONFIG_HOME = home;
+            }
+            options.env = env;
+          }
           // cargo creusot
-          const buildOutput = child_process.spawnSync("cargo", ["creusot"]);
+          const buildOutput = child_process.spawnSync("cargo", ["creusot"], options);
           if (buildOutput.status !== 0) {
             const logs = buildOutput.stdout.toString() + "\n" + buildOutput.stderr.toString();
-            run.failed(test, new vscode.TestMessage("'cargo creusot' failed\n" + logs));
+            run.failed(test, new vscode.TestMessage("Failed translation\n" + logs));
             return;
           }
           // why3find prove
-          const output = child_process.spawnSync("cargo", ["creusot", "prove", test.id]);
+          const output = child_process.spawnSync("cargo", ["creusot", "prove", test.id], options);
           run.appendOutput(`Finishing test ${test.label}\n\r`);
           if (output.status !== 0) {
             const logs = output.stdout.toString() + "\n" + output.stderr.toString();
