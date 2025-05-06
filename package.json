@@ -26,6 +26,21 @@
           "type": "string",
           "default": "",
           "description": "Path to the creusot-lsp executable"
+        },
+        "creusot.home": {
+          "type": "string",
+          "default": "",
+          "description": "Override HOME environment variable"
+        },
+        "creusot.dataHome": {
+          "type": "string",
+          "default": "",
+          "description": "Override XDG_DATA_HOME environment variable"
+        },
+        "creusot.configHome": {
+          "type": "string",
+          "default": "",
+          "description": "Override XDG_CONFIG_HOME environment variable"
         }
       }
     },

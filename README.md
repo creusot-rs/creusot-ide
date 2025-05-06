@@ -79,6 +79,11 @@ Available in the command palette (`Ctrl+P`):
 ## Settings
 
 - `creusot.lspPath`: Path to the `creusot-lsp` executable. Default: `""`, finding the executable in Creusot's Opam switch.
+- `creusot.home`, `creusot.dataHome`, `creusot.configHome`: Override the environment variables `HOME`, `XDG_DATA_HOME`, and `XDG_CONFIG_HOME` when invoking Creusot. This allows running Creusot from VS Code and other applications installed via Ubuntu Snap, which sets those variables to some custom directories, breaking Creusot. On Linux you probably want to set these paths:
+
+    + `creusot.home`: `/home/$USER` (where `$USER` is your user name)
+    + `creusot.dataHome`: `/home/$USER/.local/share` (there should be a `creusot` directory at this location)
+    + `creusot.configHome`: `/home/$USER/.config` (there should be a `creusot` directory at this location)
 
 ## Developers' corner
 
