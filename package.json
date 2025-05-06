@@ -26,6 +26,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the creusot-lsp executable"
+        },
+        "creusot.home": {
+          "type": "string",
+          "default": "",
+          "description": "Override HOME environment variable"
         }
       }
     },

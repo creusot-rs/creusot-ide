@@ -22,11 +22,14 @@ function getDefaultLSPPath(): string {
 
 function getServerExecutable(context): Executable {
   const lspPath: string | undefined = workspace.getConfiguration("creusot").get("lspPath");
-  if (lspPath === undefined || lspPath === "") {
-    return { command: getDefaultLSPPath() };
-  } else {
-    return { command: lspPath };
+  const home: string | undefined = workspace.getConfiguration("creusot").get("home");
+  const command = (lspPath === undefined || lspPath === "") ? getDefaultLSPPath() : lspPath;
+  const executable: Executable = { command };
+  if (home !== undefined && home !== "") {
+    executable.options = {};
+    executable.options.env = { "HOME": home };
   }
+  return executable;
 }
 
 const languages = [
