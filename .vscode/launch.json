@@ -7,8 +7,8 @@
 			"request": "launch",
 			"name": "Launch Client",
 			"runtimeExecutable": "${execPath}",
-			"args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceRoot}/vscode"],
-			"outFiles": ["${workspaceRoot}/vscode/out/**/*.js"],
+			"args": ["--disable-extensions", "--extensionDevelopmentPath=${workspaceRoot}"],
+			"outFiles": ["${workspaceRoot}/out/**/*.js"],
 			"preLaunchTask": "Build Server and Extension",
             "env": {
                 "PATH": "${workspaceRoot}/_build/install/default/bin:${env:PATH}"
