@@ -90,14 +90,6 @@
         "type": "creusot"
       }
     ],
-    "menus": {
-      "editor/context": [
-        {
-          "command": "creusot.why3ide",
-          "group": "2_creusot"
-        }
-      ]
-    },
     "grammars": [
       {
         "language": "coma",
