@@ -142,10 +142,10 @@ async function createTests(client: LanguageClient) {
               env.HOME = home;
             }
             if (dataHome !== "") {
-              env.XDG_DATA_HOME = home;
+              env.XDG_DATA_HOME = dataHome;
             }
             if (configHome !== "") {
-              env.XDG_CONFIG_HOME = home;
+              env.XDG_CONFIG_HOME = configHome;
             }
             options.env = env;
           }
