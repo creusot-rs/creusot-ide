@@ -552,7 +552,7 @@ let guess_language path =
   else if basename path = "proof.json" then ProofJson
   else Unknown
 
-let add_file src =
+let add_file ~get_proof_info src =
   let path = file_name_of_source src in
   match guess_language path with
   | Rust ->
@@ -566,7 +566,7 @@ let add_file src =
       add_orphan_proof_json (File proof);
       add_rust_file src
     ) else (
-      Why3findUtil.refresh_info ~rust_file:path;
+      Why3findUtil.refresh_info ~get_proof_info ~rust_file:path;
       add_rust_file src
     )
   | Coma -> add_coma_file src; add_coma2 (file_name_of_source src)
@@ -593,8 +593,8 @@ let uri_to_file uri =
   else if Filename.basename path = "proof.json" then Some (ProofJson path)
   else None
 
-let refresh = function
-  | Rust rust_file -> Why3findUtil.refresh_info ~rust_file
+let refresh ~get_proof_info = function
+  | Rust rust_file -> Why3findUtil.refresh_info ~get_proof_info ~rust_file
   | _ -> ()
 
 let get_code_lenses = function
