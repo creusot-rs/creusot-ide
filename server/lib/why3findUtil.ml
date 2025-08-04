@@ -377,6 +377,52 @@ module ProofInfo = struct
 
   let pp_info h info =
     Format.fprintf h "%s: %d goals" info.coma_file (List.length info.unproved_goals)
+
+  let append_opt field f x acc = match x with
+    | None -> acc
+    | Some y -> (field, f y) :: acc
+
+  let to_json info =
+    `Assoc [
+      "coma_file", `String info.coma_file;
+      "proof_file", `String info.proof_file;
+      "rust_file", `String info.rust_file;
+      "entity_range", Range.yojson_of_t info.entity_range;
+      "unproved_goals", `List (List.map (fun goal ->
+        `Assoc ([
+          "expl", `String goal.expl;
+          "unproved_subgoals", `List (List.map ProofPath.qualified_goal_to_json goal.unproved_subgoals);
+        ] |> append_opt "range" Range.yojson_of_t goal.range)) info.unproved_goals);
+    ]
+
+  let of_json json =
+    let open Yojson.Safe.Util in
+    let coma_file = json |> member "coma_file" |> to_string in
+    let proof_file = json |> member "proof_file" |> to_string in
+    let rust_file = json |> member "rust_file" |> to_string in
+    let entity_range = json |> member "entity_range" |> Range.t_of_yojson in
+    let unproved_goals = json |> member "unproved_goals" |> to_list |> List.map (fun goal ->
+      let expl = goal |> member "expl" |> to_string in
+      let unproved_subgoals = goal |> member "unproved_subgoals" |> to_list |> List.filter_map ProofPath.qualified_goal_of_json in
+      let range = try Some (goal |> member "range" |> Range.t_of_yojson) with _ -> None in
+      { range; expl; unproved_subgoals }) in
+    { coma_file; proof_file; rust_file; entity_range; unproved_goals }
+
+  let to_file file info =
+    try
+      let json = to_json info in
+      let oc = open_out file in
+      Yojson.Safe.pretty_to_channel oc json;
+      close_out oc
+    with e -> log Error "to_file: Failed to write proof info to %s: %s" file (Printexc.to_string e)
+
+  let of_file file =
+    try
+      let json = Yojson.Safe.from_file file in
+      Some (of_json json)
+    with e ->
+      log Error "of_file: Failed to read proof info from %s: %s" file (Printexc.to_string e);
+      None
 end
 
 let get_src_regex = Str.regexp "(\\* #\"\\([^\"]*\\)\" \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\*)"
@@ -523,15 +569,19 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
 
 let proof_info : (string, ProofInfo.t) Hashtbl.t = Hashtbl.create 10
 
-let create_proof_info (env : Why3find.Project.env) ~proof_file ~coma_file =
-  log Debug "create_proof_info %s" coma_file;
-  match get_proof_info env ~proof_file ~coma_file with
-  | info ->
+let register_proof_info ~coma_file = function
+  | Some info ->
     Hashtbl.replace proof_info coma_file info;
     add_coma_dep ~coma_file ~rust_file:info.rust_file
-  | exception e ->
-    Hashtbl.remove proof_info coma_file; (* Remove old info if it exists *)
-    log Error "create_proof_info: %s" (Printexc.to_string e)
+  | None ->
+    Hashtbl.remove proof_info coma_file
+
+let create_proof_info (env : Why3find.Project.env) ~proof_file ~coma_file =
+  log Debug "create_proof_info %s" coma_file;
+  register_proof_info ~coma_file
+    (match get_proof_info env ~proof_file ~coma_file with
+    | info -> Some info
+    | exception _ -> None)
 
 (* Hack: the ":why3" suffix is a custom file type to enable syntax highlighting in VSCode
    (ideally we would be able to tell VSCode to set a language for all virtual documents in the
@@ -644,7 +694,7 @@ let get_lenses ~rust_file : CodeLens.t list =
 let get_test_items ~rust_file : Test_api.test_item list =
   concat_map_info ~rust_file (fun info -> [test_item_of_info info])
 
-let refresh_info ~rust_file : unit =
+let refresh_info ~get_proof_info ~rust_file : unit =
   match Hashtbl.find_opt proof_info_deps rust_file with
   | None -> ()
   | Some coma_files ->
@@ -653,7 +703,7 @@ let refresh_info ~rust_file : unit =
       let (/) = Filename.concat in
       let proof_file = Filename.chop_extension coma_file / "proof.json" in
       if Sys.file_exists coma_file then
-        create_proof_info (get_env ()) ~proof_file ~coma_file
+        register_proof_info ~coma_file (get_proof_info ~proof_file)
       else
         bad_coma_files := coma_file :: !bad_coma_files);
     List.iter (Hashtbl.remove coma_files) !bad_coma_files

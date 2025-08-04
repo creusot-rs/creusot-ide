@@ -63,14 +63,17 @@ module ProofInfo : sig
     unproved_goals: goal list;
   }
   val pp_info : Format.formatter -> t -> unit
+  val to_file : string -> t -> unit
+  val of_file : string -> t option
 end
   
 val get_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> ProofInfo.t
 val create_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> unit
+val register_proof_info : coma_file:string -> ProofInfo.t option -> unit
 val get_diagnostics : rust_file:string -> Diagnostic.t list
 val get_lenses : rust_file:string -> CodeLens.t list
 val get_test_items : rust_file:string -> Test_api.test_item list
-val refresh_info : rust_file:string -> unit
+val refresh_info : get_proof_info:(proof_file:string -> ProofInfo.t option) -> rust_file:string -> unit
 val add_coma2 : string -> unit
 val get_rust_source : coma_file:string -> string option
 

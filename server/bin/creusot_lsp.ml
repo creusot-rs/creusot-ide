@@ -1,6 +1,66 @@
 open Linol_lwt
 open Creusot_lsp
 
+let target_lsp = "target/.creusot-lsp"
+
+let proof_info_path ~proof_file =
+  let cwd = Sys.getcwd () in
+  if String.sub proof_file 0 (String.length cwd) <> cwd || proof_file.[String.length cwd] <> '/' then
+    Stdlib.failwith (Printf.sprintf "Expected the proof file %s to be in the current working directory %s" proof_file cwd);
+  let proof_file = String.sub proof_file (String.length cwd + 1) (String.length proof_file - String.length cwd - 1) in
+  Filename.concat target_lsp proof_file
+
+let rec mkdir_parents dir =
+  if Sys.file_exists dir then ()
+  else (
+    mkdir_parents (Filename.dirname dir);
+    Sys.mkdir dir 0o755)
+
+let exec_self ~cmd file =
+  let self = Sys.argv.(0) in
+  let ih, oh = Unix.open_process_args self [|self; cmd; file|] in
+  let msg =
+    let buf = Buffer.create 1024 in
+    try while true do
+      Buffer.add_channel buf ih 1024;
+    done with End_of_file -> Buffer.contents buf
+  in
+  (Unix.close_process (ih, oh), msg)
+
+let get_proof_info ~proof_file =
+  try
+    let status, msg = exec_self ~cmd:"why3" proof_file in
+    match status with
+    | Unix.WEXITED 0 ->
+      let output = proof_info_path ~proof_file in
+      Why3findUtil.ProofInfo.of_file output
+    | Unix.WEXITED _ -> Stdlib.failwith msg
+    | _ -> Stdlib.failwith "Interrupted"
+  with
+  | e -> Log.log Error "get_proof_info: %s" (Printexc.to_string e); None
+
+let exec_show_task goal =
+  match exec_self ~cmd:"showtask" goal with
+  | _, msg -> msg
+  | exception e -> Printexc.to_string e
+
+let run_why3 proof_file =
+  let coma_file = Filename.(dirname proof_file ^ ".coma") in
+  let output = proof_info_path ~proof_file in
+  mkdir_parents (Filename.dirname output);
+  let info = Why3findUtil.get_proof_info (Why3findUtil.get_env ()) ~proof_file ~coma_file in
+  Why3findUtil.ProofInfo.to_file output info
+
+let show_task req =
+  let output = match Why3findUtil.decode_subgoal req with
+    | exception Failure _ -> "Invalid goal (please report to https://github.com/creusot-rs/creusot-ide/issues)\n" ^ req
+    | goal ->
+      match Why3findUtil.get_goal (Why3findUtil.get_env ()) goal with
+      | None -> "No goal found (perhaps the proofs are out of date)"
+      | Some goal -> goal
+  in
+  print_endline output
+
 let server_info = InitializeResult.create_serverInfo ~name:"Creusot" ~version:"0.1" ()
 
 class lsp_server =
@@ -58,7 +118,7 @@ class lsp_server =
     method private changed_watched_file ~notify_back change =
       match change.type_ with
       | Created | Changed ->
-        Creusot_manager.add_file (File (DocumentUri.to_path change.uri));
+        Creusot_manager.add_file ~get_proof_info (File (DocumentUri.to_path change.uri));
         let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _ -> Lwt.return ()) in
         Lwt.return ()
       | _ -> Lwt.return ()
@@ -66,7 +126,7 @@ class lsp_server =
     method private _on_doc ~notify_back:(_ : Linol_lwt.Jsonrpc2.notify_back)
         (uri : Lsp.Types.DocumentUri.t) (content : string) =
         let path = DocumentUri.to_path uri in
-        Creusot_manager.add_file (String (path, content));
+        Creusot_manager.add_file ~get_proof_info (String (path, content));
         Lwt.return ()
 
     (* We now override the [on_notify_doc_did_open] method that will be called
@@ -101,7 +161,7 @@ class lsp_server =
         let option_iter f = function
           | None -> return ()
           | Some x -> f x in
-        Creusot_manager.refresh file;
+        Creusot_manager.refresh ~get_proof_info file;
         let* _ = option_iter send_test_items (Creusot_manager.get_test_items file) in
         let* _ = option_iter notify_back#send_diagnostic (Creusot_manager.get_diagnostics file) in
         return (Creusot_manager.get_code_lenses file)
@@ -133,22 +193,14 @@ class lsp_server =
           let req = Jsonrpc.Structured.yojson_of_t req in
           let msg =
             match req with
-            | `List [`String req] ->
-              (match Why3findUtil.decode_subgoal req with
-              | exception Failure _ -> "Invalid goal (please report to https://github.com/creusot-rs/creusot-ide/issues)\n" ^ req
-              | goal ->
-                let goal = Why3findUtil.get_goal (Why3findUtil.get_env ()) goal in
-                match goal with
-                | None -> "No goal found (perhaps the proofs are out of date)"
-                | Some goal -> goal
-              )
+            | `List [`String req] -> exec_show_task req
             | _ -> "Bad request (please report to https://github.com/creusot-rs/creusot-ide/issues)\n" ^ Yojson.Safe.to_string req
           in Lwt.return (`String msg)
       )
       | _ -> super#on_unknown_request ~notify_back ~server_request ~id name req
   end
 
-let run () =
+let run_server () =
   Printexc.record_backtrace true;
   let s = new lsp_server in
   let server = Linol_lwt.Jsonrpc2.create_stdio ~env:() s in
@@ -163,7 +215,14 @@ let run () =
     Printf.eprintf "error: %s\n%!" e;
     exit 1
 
-let () = run ()
+let () =
+  if Array.length Sys.argv = 1 then run_server ()
+  else if Array.length Sys.argv = 3 then (
+    if Sys.argv.(1) = "why3" then run_why3 Sys.argv.(2)
+    else if Sys.argv.(1) = "showtask" then show_task Sys.argv.(2)
+    else Stdlib.failwith "Unexpected argument"
+  )  else Stdlib.failwith "Unexpected arguments."
+
 (*
 let () =
   let version = ref false in
