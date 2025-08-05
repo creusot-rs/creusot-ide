@@ -27,15 +27,27 @@ let exec_self ~cmd file =
   in
   (Unix.close_process (ih, oh), msg)
 
+let get_current_proof_info ~info_file =
+  try
+    let info = Why3findUtil.ProofInfo.of_file info_file in
+    if Digest.BLAKE256.(file info.coma_file = of_hex info.coma_file_hash) then
+      Some info
+    else
+      None
+  with _ -> None
+
 let get_proof_info ~proof_file =
   try
-    let status, msg = exec_self ~cmd:"why3" proof_file in
-    match status with
-    | Unix.WEXITED 0 ->
-      let output = proof_info_path ~proof_file in
-      Why3findUtil.ProofInfo.of_file output
-    | Unix.WEXITED _ -> Stdlib.failwith msg
-    | _ -> Stdlib.failwith "Interrupted"
+    let info_file = proof_info_path ~proof_file in
+    (* If the existing ProofInfo matches the current file, reuse it *)
+    match get_current_proof_info ~info_file with
+    | Some info -> Some info
+    | None ->
+      let status, msg = exec_self ~cmd:"why3" proof_file in
+      match status with
+      | Unix.WEXITED 0 -> Some (Why3findUtil.ProofInfo.of_file info_file)
+      | Unix.WEXITED _ -> Stdlib.failwith msg
+      | _ -> Stdlib.failwith "Interrupted"
   with
   | e -> Log.log Error "get_proof_info: %s" (Printexc.to_string e); None
 
