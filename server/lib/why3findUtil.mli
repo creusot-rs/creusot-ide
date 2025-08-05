@@ -54,6 +54,7 @@ module ProofInfo : sig
   }
   type t = {
     coma_file: string;
+    coma_file_hash: string;
     proof_file: string;
     rust_file: string;
 
@@ -64,7 +65,7 @@ module ProofInfo : sig
   }
   val pp_info : Format.formatter -> t -> unit
   val to_file : string -> t -> unit
-  val of_file : string -> t option
+  val of_file : string -> t
 end
   
 val get_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> ProofInfo.t
