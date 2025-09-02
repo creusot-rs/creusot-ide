@@ -38,13 +38,17 @@ Creusot IDE consists of two parts:
 
     3. The installation location is the Creusot-local switch, which depends on your OS.
 
+        Be at the root of the `creusot-ide` directory, where the `creusot-lsp.opam` file is located:
+
+            cd creusot-ide
+
         On Linux:
 
-            opam pin --switch=~/.local/share/creusot creusot-lsp creusot-ide/ -y
+            opam pin --switch=~/.local/share/creusot creusot-lsp . -y
 
         On MacOS:
 
-            opam pin --switch=~/.creusot creusot-lsp creusot-ide/ -y
+            opam pin --switch=~/.creusot creusot-lsp . -y
 
 At the moment, installing `creusot-lsp` in another switch or without opam altogether is not supported.
 
