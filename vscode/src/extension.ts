@@ -128,7 +128,7 @@ async function createTests(client: LanguageClient) {
         async function runTest(test: vscode.TestItem, rootPath: string) {
           run.enqueued(test);
           run.started(test);
-          run.appendOutput(`Starting test ${test.label}\n\r`);
+          run.appendOutput(`Starting test ${test.label} (${test.id})\n\r`);
           // Save the rust file
           if (test.uri) { await vscode.workspace.save(test.uri); }
           process.chdir(rootPath);
@@ -148,13 +148,6 @@ async function createTests(client: LanguageClient) {
               env.XDG_CONFIG_HOME = configHome;
             }
             options.env = env;
-          }
-          // cargo creusot
-          const buildOutput = child_process.spawnSync("cargo", ["creusot"], options);
-          if (buildOutput.status !== 0) {
-            const logs = buildOutput.stdout.toString() + "\n" + buildOutput.stderr.toString();
-            run.failed(test, new vscode.TestMessage("Failed translation\n" + logs));
-            return;
           }
           // why3find prove
           const output = child_process.spawnSync("cargo", ["creusot", "prove", test.id], options);
