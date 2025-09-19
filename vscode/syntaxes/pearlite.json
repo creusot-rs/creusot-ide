@@ -39,7 +39,7 @@
             "name": "storage.modifier"
         },
         "other-keyword": {
-            "match": "\\blet\\b",
+            "match": "\\b(:?let|const|as)\\b",
             "name": "storage.type.rust"
         },
         "constant": {
@@ -116,7 +116,7 @@
                 { "include": "#generic-type" },
                 { "include": "#angle-brackets" },
                 {
-                    "match": "\\bmut\\b",
+                    "match": "\\b(?:mut|const)\\b",
                     "name": "storage.modifier"
                 },
                 {
