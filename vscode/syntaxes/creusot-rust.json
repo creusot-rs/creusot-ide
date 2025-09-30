@@ -7,18 +7,15 @@
             "end": "\\]",
             "contentName": "meta.embedded.creusot source.creusot",
             "patterns": [
-                { "match": "\\b(?:open|law|logic|trusted|bitwise_proof|check|erasure)\\b",
+                { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result)\\b",
                   "name": "keyword" },
-                { "include": "#paren" },
+                { "include": "#check-arguments" },
+                { "include": "#logic-arguments" },
                 { "include": "#string" }
             ]
         }
     ],
     "repository": {
-        "innerkeywords": {
-            "match": "\\b(?:prophetic|self|terminates|ghost)\\b",
-            "name": "keyword"
-        },
         "paren": {
             "patterns": [
                 { "include": "#parentheses" },
@@ -26,8 +23,8 @@
                 { "include": "#braces" }
             ]
         },
-        "parentheses": {
-            "begin": "\\(",
+        "check-arguments": {
+            "begin": "(?<=check)\\(",
             "end": "\\)",
             "beginCaptures": {
                 "0": { "name": "punctuation.section.parens.begin" }
@@ -36,8 +33,46 @@
                 "0": { "name": "punctuation.section.parens.end" }
             },
             "patterns": [
-                { "include": "#innerkeywords" },
-                { "include": "#paren" }
+                { "include": "#paren" },
+                {
+                    "match": "\\b(?:terminates|ghost)\\b",
+                    "name": "keyword"
+                }
+            ]
+        },
+        "logic-arguments": {
+            "begin": "(?<=logic)\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end" }
+            },
+            "patterns": [
+                { "include": "#paren" },
+                { "include": "#open-arguments" },
+                {
+                    "match": "\\b(?:prophetic|open|law|opaque|sealed|inline)\\b",
+                    "name": "keyword"
+                }
+            ]
+        },
+        "open-arguments": {
+            "begin": "(?<=open)\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end" }
+            },
+            "patterns": [
+                { "include": "#paren" },
+                {
+                    "match": "\\b(?:self|super|crate)\\b",
+                    "name": "keyword"
+                }
             ]
         },
         "brackets": {
