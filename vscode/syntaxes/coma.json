@@ -22,7 +22,10 @@
         "comments": {
             "begin": "\\(\\*",
             "end": "\\*\\)",
-            "name": "comment.block"
+            "name": "comment.block",
+            "patterns": [
+              { "include": "#comments" }
+            ]
         },
         "keywords": {
             "match": "\\b(?:module|match|with|end|use|type|function|predicate|axiom|goal|absurd|return|abstract|alias|as|assert|at|break|by|check|clone|coinductive|constant|continue|diverges|ensures|requires|epsilon|exception|export|float|import|inductive|invariant|label|lemma|meta|mutable|not|old|partial|private|raises|range|reads|writes|scope|so|theory|val|variant)\\b(?!')",
