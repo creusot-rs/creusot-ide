@@ -50,12 +50,12 @@
                 "0": { "name": "punctuation.section.parens.end" }
             },
             "patterns": [
-                { "include": "#paren" },
-                { "include": "#open-arguments" },
                 {
                     "match": "\\b(?:prophetic|open|law|opaque|sealed|inline)\\b",
                     "name": "keyword"
-                }
+                },
+                { "include": "#open-arguments" },
+                { "include": "#paren" }
             ]
         },
         "open-arguments": {
@@ -68,7 +68,6 @@
                 "0": { "name": "punctuation.section.parens.end" }
             },
             "patterns": [
-                { "include": "#paren" },
                 {
                     "match": "\\b(?:self|super|crate)\\b",
                     "name": "keyword"
