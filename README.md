@@ -2,7 +2,7 @@
 
 [![VSM][vsm-shield]][vsm]
 
-[vsm-shield]: https://vsmarketplacebadges.dev/version-short/creusot-rs.creusot-ide.svg
+[vsm-shield]: https://img.shields.io/badge/VS_Marketplace-prerelease-green
 [vsm]: https://marketplace.visualstudio.com/items?itemName=creusot-rs.creusot-ide
 
 A VS Code extension providing support for [Creusot](https://github.com/creusot-rs/creusot), a deductive verifier for Rust code.
