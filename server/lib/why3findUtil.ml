@@ -324,7 +324,7 @@ let loc_to_range loc = rawloc_to_range (Why3.Loc.get loc)
 
 let goal_term_loc (g : Session.goal) =
   let open Why3 in
-  (Task.task_goal_fmla (Session.goal_task g)).Term.t_loc
+  Term.t_loc (Task.task_goal_fmla (Session.goal_task g))
 
 let get_goal_loc env q = for_goal env q goal_term_loc
 
