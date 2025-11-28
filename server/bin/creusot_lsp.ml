@@ -73,6 +73,11 @@ let show_task req =
   in
   print_endline output
 
+let pp_changed_files fmt =
+  Format.pp_print_string fmt "Changed: ";
+  let pp_file fmt change = Format.pp_print_string fmt (DocumentUri.to_path change.FileEvent.uri) in
+  Format.pp_print_list ~pp_sep:Format.pp_print_space pp_file fmt
+
 let server_info = InitializeResult.create_serverInfo ~name:"Creusot" ~version:"0.1" ()
 
 class lsp_server =
@@ -124,7 +129,9 @@ class lsp_server =
         let reg_params = RegistrationParams.create ~registrations:[file_watcher_registration] in
         let* _req_id = notify_back#send_request (ClientRegisterCapability reg_params) (fun _result -> Lwt.return ()) in
         Lwt.return ()
-      | DidChangeWatchedFiles { changes } -> Lwt_list.iter_s (self#changed_watched_file ~notify_back) changes
+      | DidChangeWatchedFiles { changes } ->
+        Log.debug "%a" pp_changed_files changes;
+        Lwt_list.iter_s (self#changed_watched_file ~notify_back) changes
       | notif -> super#on_notification_unhandled ~notify_back notif
 
     method private changed_watched_file ~notify_back change =

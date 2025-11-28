@@ -21,3 +21,15 @@ let log (type a) (level : log_level) (fmt : (a, Format.formatter, unit) format) 
     Format.eprintf ("[%s] " ^^ fmt ^^ "@.") (string_of_log_level level)
   else
     Format.ifprintf Format.err_formatter fmt
+
+let debug (type a) (fmt : (a, Format.formatter, unit) format) : a =
+  log Debug fmt
+
+let info (type a) (fmt : (a, Format.formatter, unit) format) : a =
+  log Info fmt
+
+let warn (type a) (fmt : (a, Format.formatter, unit) format) : a =
+  log Warning fmt
+
+let error (type a) (fmt : (a, Format.formatter, unit) format) : a =
+  log Error fmt
