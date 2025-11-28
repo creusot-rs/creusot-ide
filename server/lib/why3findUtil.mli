@@ -54,9 +54,12 @@ module ProofInfo : sig
   }
   type t = {
     coma_file: string;
-    coma_file_hash: string;
     proof_file: string;
     rust_file: string;
+
+    (** BLAKE256 hashes in hex *)
+    coma_file_hash: string;
+    proof_file_hash: string;
 
     (* Typically, location of the function declaration *)
     entity_range: Range.t;
@@ -66,8 +69,9 @@ module ProofInfo : sig
   val pp_info : Format.formatter -> t -> unit
   val to_file : string -> t -> unit
   val of_file : string -> t
+  val up_to_date : t -> bool
 end
-  
+
 val get_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> ProofInfo.t
 val create_proof_info : Why3find.Project.env -> proof_file:string -> coma_file:string -> unit
 val register_proof_info : coma_file:string -> ProofInfo.t option -> unit

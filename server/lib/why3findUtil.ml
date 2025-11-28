@@ -366,10 +366,11 @@ module ProofInfo = struct
   }
   type t = {
     coma_file: string;
-    (** BLAKE256 hash in hex *)
-    coma_file_hash: string;
     proof_file: string;
     rust_file: string;
+
+    coma_file_hash: string;
+    proof_file_hash: string;
 
     (* Typically, location of the function declaration *)
     entity_range: Range.t;
@@ -387,9 +388,10 @@ module ProofInfo = struct
   let to_json info =
     `Assoc [
       "coma_file", `String info.coma_file;
-      "coma_file_hash", `String info.coma_file_hash;
       "proof_file", `String info.proof_file;
       "rust_file", `String info.rust_file;
+      "coma_file_hash", `String info.coma_file_hash;
+      "proof_file_hash", `String info.proof_file_hash;
       "entity_range", Range.yojson_of_t info.entity_range;
       "unproved_goals", `List (List.map (fun goal ->
         `Assoc ([
@@ -401,8 +403,9 @@ module ProofInfo = struct
   let of_json json =
     let open Yojson.Safe.Util in
     let coma_file = json |> member "coma_file" |> to_string in
-    let coma_file_hash = json |> member "coma_file_hash" |> to_string in
     let proof_file = json |> member "proof_file" |> to_string in
+    let coma_file_hash = json |> member "coma_file_hash" |> to_string in
+    let proof_file_hash = json |> member "proof_file_hash" |> to_string in
     let rust_file = json |> member "rust_file" |> to_string in
     let entity_range = json |> member "entity_range" |> Range.t_of_yojson in
     let unproved_goals = json |> member "unproved_goals" |> to_list |> List.map (fun goal ->
@@ -410,7 +413,7 @@ module ProofInfo = struct
       let unproved_subgoals = goal |> member "unproved_subgoals" |> to_list |> List.filter_map ProofPath.qualified_goal_of_json in
       let range = try Some (goal |> member "range" |> Range.t_of_yojson) with _ -> None in
       { range; expl; unproved_subgoals }) in
-    { coma_file; coma_file_hash; proof_file; rust_file; entity_range; unproved_goals }
+    { coma_file; coma_file_hash; proof_file; proof_file_hash; rust_file; entity_range; unproved_goals }
 
   let to_file file info =
     try
@@ -421,6 +424,9 @@ module ProofInfo = struct
     with e -> log Error "to_file: Failed to write proof info to %s: %s" file (Printexc.to_string e)
 
   let of_file file = of_json (Yojson.Safe.from_file file)
+
+  let up_to_date info = Digest.BLAKE256.(file info.coma_file = of_hex info.coma_file_hash &&
+    file info.proof_file = of_hex info.proof_file_hash)
 end
 
 let get_src_regex = Str.regexp "(\\* #\"\\([^\"]*\\)\" \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\*)"
@@ -564,7 +570,8 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
   in
   let unproved_goals = collect_goals (get_session env coma_file) in
   let coma_file_hash = Digest.BLAKE256.(file coma_file |> to_hex) in
-  ProofInfo.{ coma_file; coma_file_hash; proof_file; rust_file; entity_range; unproved_goals }
+  let proof_file_hash = Digest.BLAKE256.(file proof_file |> to_hex) in
+  ProofInfo.{ coma_file; coma_file_hash; proof_file; proof_file_hash; rust_file; entity_range; unproved_goals }
 
 let proof_info : (string, ProofInfo.t) Hashtbl.t = Hashtbl.create 10
 
