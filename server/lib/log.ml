@@ -4,9 +4,11 @@ type log_level =
   | Warning
   | Error
 
-let log_level = ref Debug
+let log_level = ref Info
 
 let set_log_level level = log_level := level
+
+let set_debug () = set_log_level Debug
 
 let string_of_log_level = function
   | Debug -> "DEBUG"

@@ -41,6 +41,11 @@
           "type": "string",
           "default": "",
           "description": "Override XDG_CONFIG_HOME environment variable"
+        },
+        "creusot.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logs"
         }
       }
     },
