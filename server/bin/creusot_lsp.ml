@@ -121,7 +121,7 @@ class lsp_server =
           ~registerOptions:(`Assoc [
               "watchers", `List [
                 `Assoc [
-                  "globPattern", `String "**/{why3session.xml,proof.json,*.coma}";
+                  "globPattern", `String "**/{why3session.xml,proof.json,*.coma,*.rs}";
                 ]
               ]
             ])
