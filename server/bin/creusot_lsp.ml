@@ -30,7 +30,7 @@ let exec_self ~cmd file =
 let get_current_proof_info ~info_file =
   try
     let info = Why3findUtil.ProofInfo.of_file info_file in
-    if Digest.BLAKE256.(file info.coma_file = of_hex info.coma_file_hash) then
+    if Why3findUtil.ProofInfo.up_to_date info then
       Some info
     else
       None
