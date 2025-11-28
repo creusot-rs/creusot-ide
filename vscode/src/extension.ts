@@ -36,13 +36,21 @@ function creusotConfigHome(): string {
    return workspace.getConfiguration("creusot").get("configHome") || ""
 }
 
+function creusotDebug(): boolean {
+  return workspace.getConfiguration("creusot").get("debug") || false
+}
+
 function getLspPath(): string {
   const lspPath: string = creusotLspPath();
   return lspPath === "" ? getDefaultLSPPath() : lspPath;
 }
 
 function getServerExecutable(context): Executable {
-  return { command: getLspPath() }
+  const exe: Executable = { command: getLspPath() };
+  if (creusotDebug()) {
+    exe.args = ["--debug"];
+  }
+  return exe
 }
 
 const languages = [

@@ -227,13 +227,25 @@ let run_server () =
     Printf.eprintf "error: %s\n%!" e;
     exit 1
 
+type args
+  = Server
+  | Why3 of string
+  | ShowTask of string
+
+let args () =
+  if Array.length Sys.argv = 1 then Server
+  else if Sys.argv.(1) = "why3" then Why3 Sys.argv.(2)
+  else if Sys.argv.(1) = "showtask" then ShowTask Sys.argv.(2)
+  else (
+    if Array.mem "--debug" Sys.argv then Log.set_debug ();
+    Server
+  )
+
 let () =
-  if Array.length Sys.argv = 1 then run_server ()
-  else if Array.length Sys.argv = 3 then (
-    if Sys.argv.(1) = "why3" then run_why3 Sys.argv.(2)
-    else if Sys.argv.(1) = "showtask" then show_task Sys.argv.(2)
-    else Stdlib.failwith "Unexpected argument"
-  )  else Stdlib.failwith "Unexpected arguments."
+  match args () with
+  | Server -> run_server ()
+  | Why3 arg -> run_why3 arg
+  | ShowTask arg -> show_task arg
 
 (*
 let () =
