@@ -1,5 +1,5 @@
 open Why3find
-open Lsp.Types
+open Linol.Lsp.Types
 open Util
 open Log
 
@@ -316,9 +316,9 @@ let get_goal env q = for_goal env q (fun goal ->
   Some (Format.asprintf "%a" Why3.Pretty.print_sequent task))
 
 let rawloc_to_range (_, l1, c1, l2, c2) =
-  Lsp.Types.Range.create
-    ~start:(Lsp.Types.Position.create ~line:(l1 - 1) ~character:c1)
-    ~end_:(Lsp.Types.Position.create ~line:(l2 - 1) ~character:c2)
+  Linol.Lsp.Types.Range.create
+    ~start:(Linol.Lsp.Types.Position.create ~line:(l1 - 1) ~character:c1)
+    ~end_:(Linol.Lsp.Types.Position.create ~line:(l2 - 1) ~character:c2)
 
 let loc_to_range loc = rawloc_to_range (Why3.Loc.get loc)
 

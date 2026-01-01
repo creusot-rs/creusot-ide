@@ -6,7 +6,6 @@
   linol
   linol-lwt
   lwt
-  lsp
   why3
   why3find
   uri

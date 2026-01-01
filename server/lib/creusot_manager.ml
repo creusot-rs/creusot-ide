@@ -1,4 +1,4 @@
-open Lsp.Types
+open Linol.Lsp.Types
 open Hacky_coma_parser
 open Why3findUtil
 open Util
@@ -213,15 +213,15 @@ let get_coma_links uri =
 
 type rust_doc = {
   module_: string;
-  defns: (Rust_syntax.def_path * string list * Lsp.Types.Range.t) list;
+  defns: (Rust_syntax.def_path * string list * Linol.Lsp.Types.Range.t) list;
 }
 
 let rust_files : (string, rust_doc) Hashtbl.t = Hashtbl.create 16
 
 let span_to_range (start, stop) =
-  Lsp.Types.Range.create
-    ~start:(Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
-    ~end_:(Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol))
+  Linol.Lsp.Types.Range.create
+    ~start:(Linol.Lsp.Types.Position.create ~line:(start.Lexing.pos_lnum - 1) ~character:(start.Lexing.pos_cnum - start.Lexing.pos_bol))
+    ~end_:(Linol.Lsp.Types.Position.create ~line:(stop.Lexing.pos_lnum - 1) ~character:(stop.Lexing.pos_cnum - stop.Lexing.pos_bol))
 
 let rust_lexbuf ~path lexbuf =
   let open Hacky_rs_parser in

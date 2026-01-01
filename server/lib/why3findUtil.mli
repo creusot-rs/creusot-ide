@@ -1,4 +1,4 @@
-open Lsp.Types
+open Linol.Lsp.Types
 open Util
 
 module ProofPath : sig

@@ -1,6 +1,6 @@
 (executable
  (name creusot_test)
- (libraries creusot_lsp why3 linol-lwt lsp logs uri lwt.unix))
+ (libraries creusot_lsp why3 linol-lwt logs uri lwt.unix))
 
 (executable
  (name why3findtest)

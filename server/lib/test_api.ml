@@ -1,4 +1,4 @@
-open Lsp.Types
+open Linol.Lsp.Types
 open Ppx_yojson_conv_lib.Yojson_conv
 
 type test_item = {
