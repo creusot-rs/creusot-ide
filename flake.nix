@@ -3,7 +3,7 @@
     nixpkgs.follows = "creusot/nixpkgs";
     flake-utils.follows = "creusot/flake-utils";
 
-    creusot.url = "github:creusot-rs/creusot/7470f697f11d4dbe50eb8f3c415bbfd027fa4681";
+    creusot.url = "github:creusot-rs/creusot/74d94fef94387d7706abcc53bc490020cd6c75c3";
   };
 
   outputs = {

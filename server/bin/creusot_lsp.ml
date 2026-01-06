@@ -249,6 +249,11 @@ let args () =
   )
 
 let () =
+  let data_dir = match Sys.getenv_opt "CREUSOT_DATA_HOME" with
+    | Some dir -> dir
+    | None -> Filename.concat (Sys.getenv "HOME") ".local/share/creusot"
+  in Unix.putenv "DUNE_DIR_LOCATIONS" ("why3find:lib:" ^ data_dir ^ "/share/why3find");
+
   match args () with
   | Server -> run_server ()
   | Why3 arg -> run_why3 arg
