@@ -7,58 +7,59 @@ authors: "Li-yao Xia"
 homepage: "https://github.com/creusot-rs/creusot-ide"
 depends: [
   "angstrom" {= "0.16.1"}
-  "atomic" {= "base"}
-  "base" {= "v0.17.1"}
+  "base" {= "v0.17.3"}
   "base-bigarray" {= "base"}
   "base-bytes" {= "base"}
   "base-domains" {= "base"}
+  "base-effects" {= "base"}
   "base-nnp" {= "base"}
   "base-threads" {= "base"}
   "base-unix" {= "base"}
   "bigstringaf" {= "0.10.0"}
-  "camlzip" {= "1.13"}
   "cmdliner" {= "1.3.0"}
   "conf-autoconf" {= "0.2"}
-  "conf-gmp" {= "4"}
+  "conf-gmp" {= "5"}
+  "conf-libev" {= "4-13"}
   "conf-pkg-config" {= "4"}
-  "conf-zlib" {= "1"}
-  "conf-zmq" {= "0.1"}
   "cppo" {= "1.8.0"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.17.1"}
-  "dune-build-info" {= "3.17.1"}
-  "dune-configurator" {= "3.17.1"}
-  "dune-private-libs" {= "3.17.1"}
-  "dune-site" {= "3.17.1"}
-  "dyn" {= "3.17.1"}
-  "fmt" {= "0.9.0"}
+  "dune" {= "3.20.2"}
+  "dune-build-info" {= "3.20.2"}
+  "dune-configurator" {= "3.20.2"}
+  "dune-private-libs" {= "3.20.2"}
+  "dune-site" {= "3.20.2"}
+  "dyn" {= "3.20.2"}
+  "fmt" {= "0.11.0"}
+  "gen" {= "1.1"}
+  "hmap" {= "0.8.1"}
   "ISO8601" {= "0.2.6"}
   "jane-street-headers" {= "v0.17.0"}
+  "js_of_ocaml-compiler" {= "6.2.0"}
   "jsonm" {= "1.0.2"}
-  "jsonrpc" {= "1.20.1"}
   "jst-config" {= "v0.17.0"}
-  "linol" {= "0.8"}
-  "linol-lwt" {= "0.8"}
-  "logs" {= "0.7.0"}
-  "lsp" {= "1.20.1"}
-  "lwt" {= "5.9.0"}
-  "menhir" {= "20240715"}
-  "menhirCST" {= "20240715"}
-  "menhirLib" {= "20240715"}
-  "menhirSdk" {= "20240715"}
-  "num" {= "1.5-1"}
-  "ocaml" {= "5.2.1"}
-  "ocaml-base-compiler" {= "5.2.1"}
+  "linol" {= "0.10"}
+  "linol-lwt" {= "0.10"}
+  "logs" {= "0.9.0"}
+  "lwt" {= "5.9.2"}
+  "menhir" {= "20250912"}
+  "menhirCST" {= "20250912"}
+  "menhirLib" {= "20250912"}
+  "menhirSdk" {= "20250912"}
+  "mtime" {= "2.1.0"}
+  "num" {= "1.6"}
+  "ocaml" {= "5.3.0"}
+  "ocaml-base-compiler" {= "5.3.0"}
+  "ocaml-compiler" {= "5.3.0"}
   "ocaml-compiler-libs" {= "v0.17.0"}
   "ocaml-config" {= "3"}
   "ocaml-options-vanilla" {= "1"}
   "ocaml-syntax-shims" {= "1.0.0"}
   "ocaml_intrinsics_kernel" {= "v0.17.1"}
-  "ocamlbuild" {= "0.15.0"}
-  "ocamlfind" {= "1.9.6"}
+  "ocamlbuild" {= "0.16.1"}
+  "ocamlfind" {= "1.9.8"}
   "ocplib-endian" {= "1.2"}
   "octavius" {= "1.2.2"}
-  "ordering" {= "3.17.1"}
+  "ordering" {= "3.20.2"}
   "parsexp" {= "v0.17.0"}
   "pp" {= "2.0.0"}
   "ppx_assert" {= "v0.17.0"}
@@ -66,40 +67,40 @@ depends: [
   "ppx_cold" {= "v0.17.0"}
   "ppx_compare" {= "v0.17.0"}
   "ppx_derivers" {= "1.2.1"}
-  "ppx_deriving" {= "6.0.3"}
+  "ppx_deriving" {= "6.1.1"}
   "ppx_enumerate" {= "v0.17.0"}
-  "ppx_expect" {= "v0.17.2"}
-  "ppx_globalize" {= "v0.17.0"}
+  "ppx_expect" {= "v0.17.3"}
+  "ppx_globalize" {= "v0.17.2"}
   "ppx_hash" {= "v0.17.0"}
   "ppx_here" {= "v0.17.0"}
-  "ppx_inline_test" {= "v0.17.0"}
-  "ppx_js_style" {= "v0.17.0"}
-  "ppx_optcomp" {= "v0.17.0"}
-  "ppx_sexp_conv" {= "v0.17.0"}
-  "ppx_yojson_conv" {= "v0.17.0"}
+  "ppx_inline_test" {= "v0.17.1"}
+  "ppx_js_style" {= "v0.17.1"}
+  "ppx_optcomp" {= "v0.17.1"}
+  "ppx_sexp_conv" {= "v0.17.1"}
+  "ppx_yojson_conv" {= "v0.17.1"}
   "ppx_yojson_conv_lib" {= "v0.17.0"}
-  "ppxlib" {= "0.34.0"}
-  "ppxlib_jane" {= "v0.17.0"}
+  "ppxlib" {= "0.37.0"}
+  "ppxlib_jane" {= "v0.17.4"}
+  "sedlex" {= "3.7"}
   "seq" {= "base"}
   "sexplib" {= "v0.17.0"}
   "sexplib0" {= "v0.17.0"}
   "stdio" {= "v0.17.0"}
   "stdlib-shims" {= "0.3.0"}
-  "stdune" {= "3.17.1"}
+  "stdune" {= "3.20.2"}
   "stringext" {= "1.6.0"}
   "terminal_size" {= "0.2.0"}
   "time_now" {= "v0.17.0"}
   "toml" {= "7.1.0"}
-  "topkg" {= "1.0.7"}
-  "trace" {= "0.9"}
+  "topkg" {= "1.1.0"}
+  "trace" {= "0.10"}
   "uri" {= "4.4.0"}
-  "uutf" {= "1.0.3"}
-  "why3" {= "1.8.0"}
-  "why3find" {= "1.1.1+dev"}
+  "uutf" {= "1.0.4"}
+  "why3" {= "1.8.2"}
+  "why3find" {= "1.2.0+dev"}
   "xmlm" {= "1.4.0"}
   "yojson" {= "2.2.2"}
   "zarith" {= "1.14"}
-  "zmq" {= "5.3.0"}
 ]
 build: [
   ["dune" "subst"] {dev}
@@ -116,6 +117,6 @@ build: [
   ]
 ]
 pin-depends: [
-  ["why3.1.8.0" "git+https://gitlab.inria.fr/why3/why3.git/#HEAD"]
-  ["why3find.1.1.1+dev" "git+https://git.frama-c.com/pub/why3find.git/#master"]
+  ["why3.1.8.2" "git+ssh://git@gitlab.inria.fr/why3/why3#hyp_name"]
+  ["why3find.1.2.0+dev" "git+https://git.frama-c.com/pub/why3find#why3-master"]
 ]

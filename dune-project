@@ -10,9 +10,8 @@
   "why3"
   "why3find"
   "dune-build-info"
-  ("lsp" (>= 1.20))
   "lwt"
-  ("linol" (= 0.9))
+  ("linol" (= 0.10))
   "linol-lwt"
   "toml"
   "xmlm"
