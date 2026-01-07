@@ -425,8 +425,9 @@ module ProofInfo = struct
 
   let of_file file = of_json (Yojson.Safe.from_file file)
 
-  let up_to_date info = Digest.BLAKE256.(file info.coma_file = of_hex info.coma_file_hash &&
-    file info.proof_file = of_hex info.proof_file_hash)
+  let up_to_date info =
+      Digest.BLAKE256.(file info.coma_file = of_hex info.coma_file_hash &&
+      (try file info.proof_file with _ -> "") = of_hex info.proof_file_hash)
 end
 
 let get_src_regex = Str.regexp "(\\* #\"\\([^\"]*\\)\" \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\*)"
@@ -570,7 +571,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
   in
   let unproved_goals = collect_goals (get_session env coma_file) in
   let coma_file_hash = Digest.BLAKE256.(file coma_file |> to_hex) in
-  let proof_file_hash = Digest.BLAKE256.(file proof_file |> to_hex) in
+  let proof_file_hash = try Digest.BLAKE256.(file proof_file |> to_hex) with _ -> "" in
   ProofInfo.{ coma_file; coma_file_hash; proof_file; proof_file_hash; rust_file; entity_range; unproved_goals }
 
 let proof_info : (string, ProofInfo.t) Hashtbl.t = Hashtbl.create 10
