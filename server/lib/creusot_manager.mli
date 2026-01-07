@@ -1,4 +1,4 @@
-open Lsp.Types
+open Linol.Lsp.Types
 open Util
 
 val lookup_demangle : string -> Rust_syntax.def_path option

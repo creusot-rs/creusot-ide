@@ -93,7 +93,7 @@ class lsp_server =
     method private spawn_query_handler f = Linol_lwt.spawn f
 
     method! on_req_initialize ~notify_back params =
-      let open Lsp.Types in
+      let open Linol.Lsp.Types in
       rootUri := params.rootUri;
       let* () = match params.InitializeParams.workspaceFolders with
         | Some (Some folders) -> folders |> Lwt_list.iter_s @@ fun folder ->
@@ -138,12 +138,12 @@ class lsp_server =
       match change.type_ with
       | Created | Changed ->
         Creusot_manager.add_file ~get_proof_info (File (DocumentUri.to_path change.uri));
-        let* _ = notify_back#send_request Lsp.Server_request.CodeLensRefresh (fun _ -> Lwt.return ()) in
+        let* _ = notify_back#send_request Linol.Lsp.Server_request.CodeLensRefresh (fun _ -> Lwt.return ()) in
         Lwt.return ()
       | _ -> Lwt.return ()
 
     method private _on_doc ~notify_back:(_ : Linol_lwt.Jsonrpc2.notify_back)
-        (uri : Lsp.Types.DocumentUri.t) (content : string) =
+        (uri : Linol.Lsp.Types.DocumentUri.t) (content : string) =
         let path = DocumentUri.to_path uri in
         Creusot_manager.add_file ~get_proof_info (String (path, content));
         Lwt.return ()
@@ -172,10 +172,10 @@ class lsp_server =
       | Some file ->
         let send_test_items items =
           let items = List.map Test_api.yojson_of_test_item items in
-              notify_back#send_notification (Lsp.Server_notification.UnknownNotification
-                (Jsonrpc.Notification.create
+              notify_back#send_notification (Linol.Lsp.Server_notification.UnknownNotification
+                (Linol_jsonrpc.Jsonrpc.Notification.create
                   ~method_:"creusot/testitems"
-                  ~params:(Jsonrpc.Structured.t_of_yojson (`List [`String (DocumentUri.to_string uri); `List items]))
+                  ~params:(Linol_jsonrpc.Jsonrpc.Structured.t_of_yojson (`List [`String (DocumentUri.to_string uri); `List items]))
                   ())) in
         let option_iter f = function
           | None -> return ()
@@ -194,7 +194,7 @@ class lsp_server =
         return (Some hints)
       else return None
 
-    method! on_request_unhandled (type a) ~notify_back ~id (r : a Lsp.Client_request.t) : a t =
+    method! on_request_unhandled (type a) ~notify_back ~id (r : a Linol.Lsp.Client_request.t) : a t =
       match r with
       | TextDocumentLink (DocumentLinkParams.{ textDocument = { uri }; _ }) ->
         let path = DocumentUri.to_path uri in
@@ -209,7 +209,7 @@ class lsp_server =
         match req with
         | None -> Lwt.return `Null (* error *)
         | Some req ->
-          let req = Jsonrpc.Structured.yojson_of_t req in
+          let req = Linol_jsonrpc.Jsonrpc.Structured.yojson_of_t req in
           let msg =
             match req with
             | `List [`String req] -> exec_show_task req
@@ -249,6 +249,11 @@ let args () =
   )
 
 let () =
+  let data_dir = match Sys.getenv_opt "CREUSOT_DATA_HOME" with
+    | Some dir -> dir
+    | None -> Filename.concat (Sys.getenv "HOME") ".local/share/creusot"
+  in Unix.putenv "DUNE_DIR_LOCATIONS" ("why3find:lib:" ^ data_dir ^ "/share/why3find");
+
   match args () with
   | Server -> run_server ()
   | Why3 arg -> run_why3 arg

@@ -1,5 +1,5 @@
 {
-open Lsp.Types
+open Linol.Lsp.Types
 open Rust_syntax
 open Rust_parser
 open Util.Lex

@@ -1,4 +1,4 @@
-open Lsp.Types
+open Linol.Lsp.Types
 
 type test_item = {
   id: string;    (* Unique identifier *)

@@ -1,4 +1,4 @@
-open Lsp.Types
+open Linol.Lsp.Types
 
 type source =
   | File of (* file name *) string
