@@ -492,7 +492,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
   let rust_file, entity_range = get_src coma_file in
   let collect_goals theories =
     let goals = ref [] in
-    begin match Yojson.Basic.from_file proof_file with
+    begin try match Yojson.Basic.from_file proof_file with
     | exception Sys_error _ ->
       theories |> List.iter (fun th ->
         th.Why3Session.theory_children () |> List.iter (fun g ->
@@ -519,7 +519,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
           let goals_left = ref (th.Why3Session.theory_children ()) in
           to_assoc json |> List.iter (fun (vc, json) ->
             match find_remove (fun g -> Session.goal_name g.Why3Session.goal = vc) !goals_left with
-            | None -> failwith (Printf.sprintf "vc %s.%s not found" theory vc)
+            | None -> Log.error "vc %s.%s not found" theory vc
             | Some (g, goals') ->
               goals_left := goals';
               let tactic, children =
@@ -566,6 +566,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
                   goals := ProofInfo.{ range ; expl ; unproved_subgoals = List.rev !subgoals } :: !goals
                 ))
               ))
+      with _ -> Log.error "get_proof_info failed for %s" coma_file
     end;
     List.rev !goals
   in
