@@ -24,7 +24,7 @@
 
           pname = "creusot-ide";
           src = ./.;
-          npmDepsHash = "sha256-bkZ5pHTZsa/5vMbRUqazTRVSKhoCnI0LZHyowAwLxEQ=";
+          npmDepsHash = "sha256-QHwVZByCru9HoRyf4T6fGVFDFwh9h9rikB61zxo2i7A=";
 
           buildInputs = with pkgs; [libsecret];
           nativeBuildInputs = with pkgs; [pkg-config];
