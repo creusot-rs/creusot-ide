@@ -58,10 +58,12 @@ let exec_show_task goal =
 
 let run_why3 proof_file =
   let coma_file = Filename.(dirname proof_file ^ ".coma") in
-  let output = proof_info_path ~proof_file in
-  mkdir_parents (Filename.dirname output);
-  let info = Why3findUtil.get_proof_info (Why3findUtil.get_env ()) ~proof_file ~coma_file in
-  Why3findUtil.ProofInfo.to_file output info
+  if Sys.file_exists coma_file then (
+    let output = proof_info_path ~proof_file in
+    mkdir_parents (Filename.dirname output);
+    let info = Why3findUtil.get_proof_info (Why3findUtil.get_env ()) ~proof_file ~coma_file in
+    Why3findUtil.ProofInfo.to_file output info
+  )
 
 let show_task req =
   let output = match Why3findUtil.decode_subgoal req with
