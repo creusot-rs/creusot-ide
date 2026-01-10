@@ -34,7 +34,7 @@ let get_current_proof_info ~info_file =
       Some info
     else
       None
-  with _ -> None
+  with e -> Log.log Error "get_current_proof_info: %s" (Printexc.to_string e); None
 
 let get_proof_info ~proof_file =
   try
