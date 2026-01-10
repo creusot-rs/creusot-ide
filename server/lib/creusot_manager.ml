@@ -552,8 +552,18 @@ let guess_language path =
   else if basename path = "proof.json" then ProofJson
   else Unknown
 
+let contains_string needle haystack =
+  let n = String.length needle in
+  let h = String.length haystack in
+  let rec go i =
+    if i + n <= h then
+      String.sub haystack i n = needle || go (i + 1)
+    else false
+  in go 0
+
 let add_file ~get_proof_info src =
   let path = file_name_of_source src in
+  if contains_string ".creusot-lsp" path then () else
   match guess_language path with
   | Rust ->
     let base = Filename.chop_suffix path ".rs" in
