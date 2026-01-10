@@ -545,9 +545,10 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
               in
               children |> List.iteri (fun i (child, json) ->
                 let subgoals = ref [] in
-                let rec collect_subgoals tactics json =
+                let rec collect_subgoals rev_tactics json =
                   match json with
                   | `Null ->
+                    let tactics = List.rev rev_tactics in
                     let subgoal = ProofPath.{ file = coma_file; theory; goal_info = { vc; tactics } } in (*  *)
                     subgoals := subgoal :: !subgoals
                   | _ ->
@@ -555,7 +556,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
                     | `Null -> () (* completed goal *)
                     | `String tactic ->
                       (match member "children" json with
-                      | `List children -> List.iteri (fun i -> collect_subgoals ((tactic, i) :: tactics)) children
+                      | `List children -> List.iteri (fun i -> collect_subgoals ((tactic, i) :: rev_tactics)) children
                       | _ -> failwith "bad \"children\" field (must be a list)")
                     | _ -> failwith "bad \"tactic\" field (must be a string)"
                 in
