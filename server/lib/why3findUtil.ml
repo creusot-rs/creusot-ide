@@ -426,8 +426,10 @@ module ProofInfo = struct
   let of_file file = of_json (Yojson.Safe.from_file file)
 
   let up_to_date info =
-      Digest.BLAKE256.(file info.coma_file = of_hex info.coma_file_hash &&
-      (try file info.proof_file with _ -> "") = of_hex info.proof_file_hash)
+      let hash_file filename = try Digest.BLAKE256.file filename with _ -> "" in
+      let of_hex hash = if hash = "" then "" else Digest.BLAKE256.of_hex hash in
+      let check file hash = hash_file file = of_hex hash in
+      check info.coma_file info.coma_file_hash && check info.proof_file info.proof_file_hash
 end
 
 let get_src_regex = Str.regexp "(\\* #\"\\([^\"]*\\)\" \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\([0-9]*\\) \\*)"
