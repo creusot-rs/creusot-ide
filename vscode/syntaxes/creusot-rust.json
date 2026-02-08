@@ -12,7 +12,8 @@
                 { "include": "#check-arguments" },
                 { "include": "#logic-arguments" },
                 { "include": "#erasure-arguments" },
-                { "include": "#string" }
+                { "include": "#string" },
+                { "include": "#cfg-attr-creusot" }
             ]
         }
     ],
@@ -128,6 +129,29 @@
                 }
             ],
             "name": "string.quoted.double"
+        },
+        "contract": {
+            "begin": "\\b(invariant|requires|ensures|variant)\\s*\\(",
+            "end": "\\)",
+            "contentName": "meta.embedded.block.pearlite source.pearlite",
+            "beginCaptures": {
+                "1": { "name": "keyword.control" }
+            },
+            "patterns": [
+                { "include": "source.pearlite" }
+            ]
+        },
+        "cfg-attr-creusot": {
+            "begin": "cfg_attr\\s*\\(\\s*creusot\\s*,",
+            "end": "\\)",
+            "patterns": [
+                { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result)\\b",
+                  "name": "keyword" },
+                { "include": "#check-arguments" },
+                { "include": "#logic-arguments" },
+                { "include": "#erasure-arguments" },
+                { "include": "#contract" }
+            ]
         }
     }
 }
