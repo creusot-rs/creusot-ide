@@ -20,7 +20,7 @@
             ]
         },
         "comments": {
-            "begin": "\\(\\*",
+            "begin": "\\(\\*(?!\\))",
             "end": "\\*\\)",
             "name": "comment.block",
             "patterns": [
