@@ -1,7 +1,7 @@
 open Why3find
 
 let () =
-  let config = Config.load_config "." in
+  let config = Config.load_config ~root:"." in
   (match config.packages with
   | [] -> Printf.eprintf "no package found in config \"why3find.json\", at least prelude is needed for creusot proofs\n"
   | _ -> ());

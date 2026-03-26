@@ -245,7 +245,7 @@ let load_plugins =
 
 let load_config ?(root = ".") ?(warn = true) =
   let lazy_config = lazy (
-  let config = Config.load_config root in
+  let config = Config.load_config ~root in
   if warn then (
     (match config.packages with
     | [] -> log Warning "No package found in config \"why3find.json\", at least \"creusot\" is needed"
@@ -503,7 +503,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
               file = coma_file;
               theory = Session.name th.Why3Session.theory;
               goal_info = { vc = Session.goal_name g.Why3Session.goal; tactics = [("split_vc", i)] } } in
-            let expl = Session.goal_expl g.Why3Session.goal in
+            let expl = Session.goal_idename g.Why3Session.goal in
             let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc g.Why3Session.goal) else None in
             goals := ProofInfo.{ range ; expl ; unproved_subgoals = [subgoal] } :: !goals
           );
@@ -564,7 +564,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
                 in
                 collect_subgoals [(tactic, i)] json;
                 if not (List.is_empty !subgoals) then (
-                  let expl = Session.goal_expl child.Why3Session.goal in
+                  let expl = Session.goal_idename child.Why3Session.goal in
                   let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc child.Why3Session.goal) else None in
                   goals := ProofInfo.{ range ; expl ; unproved_subgoals = List.rev !subgoals } :: !goals
                 ))
