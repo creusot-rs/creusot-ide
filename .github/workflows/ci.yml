@@ -31,8 +31,8 @@ jobs:
         with:
           ocaml-compiler: 5
 
-      - run: opam pin add why3 https://gitlab.inria.fr/why3/why3.git#51e0579b
-      - run: opam pin add why3find https://git.frama-c.com/pub/why3find.git#833defb4
+      - run: opam pin add why3 https://gitlab.inria.fr/why3/why3.git#2c0f2992af85f82f3eda0f158dcf10e62e0db875
+      - run: opam pin add why3find https://git.frama-c.com/pub/why3find.git#eab37557d3e24e1913a3c4f44bc5528ef497c6c9
 
       - run: opam install . --deps-only --with-test
 
