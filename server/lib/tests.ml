@@ -61,7 +61,7 @@ let pp_range h loc =
 
 let assert_equal pp x y =
   if not (x = y) then (
-    Format.printf "Expected: %a\nActual: %a" pp x pp y;
+    Format.printf "Expected: %a\nActual: %a\n" pp x pp y;
     failwith "assert_equal failed")
 
 let%test_unit "get_goal_loc" =
@@ -93,9 +93,9 @@ let%test_unit "get_goal_loc" =
     Some (p "sum.rs" 9 4 9 7);
     Some (p "sum.rs" 9 4 9 7);
     Some (p "sum.rs" 8 16 8 65);
-    None;
+    Some (p "../testdata/sum.coma" 172 101 172 106);
   |] in
-  for i = 0 to 15 do
+  for i = 0 to Array.length expected - 1 do
     let loc = get_goal_loc env (goal i) in
     assert_equal (Format.pp_print_option pp_range) expected.(i) loc
   done
@@ -106,13 +106,21 @@ let%test_unit "proof_info" =
   let info = get_proof_info env ~proof_file:"../testdata/sum/proof.json" ~coma_file:"../testdata/sum.coma" in
   let open ProofInfo in
   let expected = [
-    "new 'start' type invariant";
-    "new 'end' type invariant";
-    "into_iter 'self' type invariant";
-    "into_iter requires";
-    "next 'self' type invariant";
-    "integer overflow";
-    "";
+    "Assert [new 'start' type invariant]";
+    "Assert [new 'end' type invariant]";
+    "Assert [into_iter 'self' type invariant]";
+    "Assert [into_iter requires]";
+    "Assert [for invariant]";
+    "Assert [for invariant]";
+    "Assert [for invariant]";
+    "Assert [loop invariant]";
+    "Assert [next 'self' type invariant]";
+    "Assert [integer overflow]";
+    "Assert [for invariant]";
+    "Assert [for invariant]";
+    "Assert [for invariant]";
+    "Assert [loop invariant]";
+    "Assert";
   ] in
   let actual =
     List.filter_map (fun goal -> if Option.is_some goal.range then None else Some goal.expl)
