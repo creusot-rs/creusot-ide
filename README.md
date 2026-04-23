@@ -89,12 +89,40 @@ Available in the command palette (`Ctrl+P`):
     + `creusot.dataHome`: `/home/$USER/.local/share` (there should be a `creusot` directory at this location)
     + `creusot.configHome`: `/home/$USER/.config` (there should be a `creusot` directory at this location)
 
-## Developers' corner
+## Build Creusot IDE for developpers
 
-To build and install the VS Code extension from source:
+- To build the **Creusot Language Server** from source:
+
+    1. First, install Creusot, Why3, and Why3find; see https://github.com/creusot-rs/creusot for instructions
+
+    2. Set the local switch (you need to do this every time you open a new shell)
+
+        On Linux:
+
+            eval $(opam env --switch=~/.local/share/creusot --set-switch)
+
+        On MacOS:
+
+            eval $(opam env --switch=~/.creusot --set-switch)
+
+    3. Install missing dependencies
+
+        opam install . --deps-only
+
+    4. Build the project
+
+            dune build
+
+- To build and install the VS Code extension from source:
 
 ```
 npx vsce package
+```
+
+If esbuild complains about not being able to resolve "vscode-languageclient/node", try:
+
+```
+npm install vscode-languageclient
 ```
 
 Then, in VS Code: Command Palette > Install from VSIX. Select the `creusot-ide-X.Y.Z.vsix` file created by the previous command.
