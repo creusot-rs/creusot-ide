@@ -60,6 +60,38 @@ const languages = [
   { scheme: "file", language: "why3proof" },
 ];
 
+function cargoCreusot(args: Array<string>): { status: number|null, stdout: string|Buffer, stderr: string|Buffer } {
+  const options: child_process.SpawnSyncOptions = {};
+  const home = creusotHome();
+  const dataHome = creusotDataHome();
+  const configHome = creusotConfigHome();
+  if (home !== "" || dataHome !== "" || configHome !== "") {
+    const env = { ...process.env };
+    if (home !== "") {
+      env.HOME = home;
+    }
+    if (dataHome !== "") {
+      env.XDG_DATA_HOME = dataHome;
+    }
+    if (configHome !== "") {
+      env.XDG_CONFIG_HOME = configHome;
+    }
+    options.env = env;
+  }
+  return child_process.spawnSync("cargo", args, options);
+}
+
+function getCreusotVersion(): Array<number|string>|null {
+  const raw_output = cargoCreusot(["creusot", "version"]);
+  if (raw_output.status != 0) {
+    window.showErrorMessage("Could not get cargo creusot version");
+    return null;
+  }
+  const output = typeof raw_output.stdout == 'string' ? raw_output.stdout : raw_output.stdout.toString();
+  let match = output.match(/cargo-creusot (\d+)\.(\d+)\.(\d+)(-[a-z]*)?/)
+  return []
+}
+
 function startServer(context): LanguageClient {
   const outputChannel = vscode.window.createOutputChannel("Creusot IDE");
   const traceOutputChannel = vscode.window.createOutputChannel("Creusot IDE Trace");
@@ -140,25 +172,8 @@ async function createTests(client: LanguageClient) {
           // Save the rust file
           if (test.uri) { await vscode.workspace.save(test.uri); }
           process.chdir(rootPath);
-          const options: child_process.SpawnSyncOptions = {};
-          const home = creusotHome();
-          const dataHome = creusotDataHome();
-          const configHome = creusotConfigHome();
-          if (home !== "" || dataHome !== "" || configHome !== "") {
-            const env = { ...process.env };
-            if (home !== "") {
-              env.HOME = home;
-            }
-            if (dataHome !== "") {
-              env.XDG_DATA_HOME = dataHome;
-            }
-            if (configHome !== "") {
-              env.XDG_CONFIG_HOME = configHome;
-            }
-            options.env = env;
-          }
           // why3find prove
-          const output = child_process.spawnSync("cargo", ["creusot", "prove", test.id], options);
+          const output = cargoCreusot(["creusot", "prove", test.id]);
           run.appendOutput(`Finishing test ${test.label}\n\r`);
           if (output.status !== 0) {
             const logs = output.stdout.toString() + "\n" + output.stderr.toString();
@@ -184,7 +199,8 @@ async function createTests(client: LanguageClient) {
     const run = controller.createTestRun(request, "Launch IDE", false);
     run.started(test0);
     process.chdir(rootPath);
-    const output = child_process.spawnSync("cargo", ["creusot", "prove", test0.id, "-i"]);
+    // FIXME: shouldn't this have the same options as the other spawnSync above?
+    const output = cargoCreusot(["creusot", "prove", test0.id, "-i"]);
     run.end();
   }
   const debugProfile = controller.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, debugHandler);
