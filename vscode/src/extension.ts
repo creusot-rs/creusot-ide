@@ -187,7 +187,7 @@ async function createTests(client: LanguageClient) {
           if (test.uri) { await vscode.workspace.save(test.uri); }
           process.chdir(rootPath);
           // why3find prove
-          const output = cargoCreusot(["creusot", "prove", test.id]);
+          const output = cargoCreusot(creusotVersionAtLeast(0, 12, 0) ? ["creusot", test.id] : ["creusot", "prove", test.id]);
           run.appendOutput(`Finishing test ${test.label}\n\r`);
           if (output.status !== 0) {
             const logs = output.stdout.toString() + "\n" + output.stderr.toString();
@@ -213,8 +213,7 @@ async function createTests(client: LanguageClient) {
     const run = controller.createTestRun(request, "Launch IDE", false);
     run.started(test0);
     process.chdir(rootPath);
-    // FIXME: shouldn't this have the same options as the other spawnSync above?
-    const output = cargoCreusot(["creusot", "prove", test0.id, "-i"]);
+    const output = cargoCreusot(creusotVersionAtLeast(0, 12, 0) ? ["creusot", test0.id, "-i"] : ["creusot", "prove", test0.id, "-i"]);
     run.end();
   }
   const debugProfile = controller.createRunProfile("Debug", vscode.TestRunProfileKind.Debug, debugHandler);
@@ -239,7 +238,7 @@ export function activate(context: ExtensionContext) {
     vscode.TaskScope.Workspace,
     "Creusot Build",
     "creusot",
-    new vscode.ShellExecution("cargo", ["creusot"])
+    new vscode.ShellExecution("cargo", creusotVersionAtLeast(0, 12, 0) ? ["creusot"] : ["creusot", "--only=coma"])
   )
   registerCommand(context, "creusot.build", async () => {
     const exec = await vscode.tasks.executeTask(creusotBuild)
@@ -267,9 +266,9 @@ export function activate(context: ExtensionContext) {
       command: "why3find",
     },
     vscode.TaskScope.Workspace,
-    "Why3find Prove Everything",
+    "Creusot Prove",
     "creusot",
-    new vscode.ShellExecution("cargo", ["creusot", "prove"])
+    new vscode.ShellExecution("cargo", creusotVersionAtLeast(0, 12, 0) ? ["creusot"] : ["creusot", "prove"])
   )
   registerCommand(context, "creusot.prove", async () => {
     const exec = await vscode.tasks.executeTask(creusotProve)

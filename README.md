@@ -63,6 +63,7 @@ At the moment, installing `creusot-lsp` in another switch or without opam altoge
     "rust-analyzer.check.overrideCommand": [
             "cargo",
             "creusot",
+            "--only=coma",
             "--",
             "--message-format=json"
         ]
