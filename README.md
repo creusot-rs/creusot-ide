@@ -116,14 +116,14 @@ Available in the command palette (`Ctrl+P`):
 
 - To build and install the VS Code extension from source:
 
-```
-npx vsce package
-```
+    ```
+    npx vsce package
+    ```
 
-If esbuild complains about not being able to resolve "vscode-languageclient/node", try:
+    Then, in VS Code: Command Palette > Install from VSIX. Select the `creusot-ide-X.Y.Z.vsix` file created by the previous command.
 
-```
-npm install vscode-languageclient
-```
+    If esbuild complains about not being able to resolve "vscode-languageclient/node", try:
 
-Then, in VS Code: Command Palette > Install from VSIX. Select the `creusot-ide-X.Y.Z.vsix` file created by the previous command.
+    ```
+    npm install vscode-languageclient
+    ```
