@@ -26,10 +26,10 @@ jobs:
       - run: sudo apt update
         if: matrix.os == 'ubuntu-latest'
 
-      - name: Set-up OCaml
+      - name: Set up OCaml
         uses: ocaml/setup-ocaml@v3
         with:
-          ocaml-compiler: 5
+          ocaml-compiler: 5.3.0
 
       - run: opam install . --deps-only --with-test --locked
 
