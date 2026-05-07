@@ -3,7 +3,7 @@
     nixpkgs.follows = "creusot/nixpkgs";
     flake-utils.follows = "creusot/flake-utils";
 
-    creusot.url = "github:creusot-rs/creusot/v0.9.0";
+    creusot.url = "github:creusot-rs/creusot/v0.11.0";
   };
 
   outputs = {
@@ -16,7 +16,7 @@
       pkgs = import nixpkgs {inherit system;};
       pkgsCreusot = creusot.lib.${system}.pkgs;
 
-      version = "0.1.99";
+      version = "0.2.594";
     in {
       packages = {
         code = pkgs.buildNpmPackage {
@@ -24,7 +24,7 @@
 
           pname = "creusot-ide";
           src = ./.;
-          npmDepsHash = "sha256-QHwVZByCru9HoRyf4T6fGVFDFwh9h9rikB61zxo2i7A=";
+          npmDepsHash = "sha256-7bODwzezOOXmS43pezizOQ+1qfDD/8y23NVlDRvtpJY=";
 
           buildInputs = with pkgs; [libsecret];
           nativeBuildInputs = with pkgs; [pkg-config];

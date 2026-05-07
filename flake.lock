@@ -2,11 +2,11 @@
   "nodes": {
     "crane": {
       "locked": {
-        "lastModified": 1763511871,
-        "narHash": "sha256-KKZWi+ij7oT0Ag8yC6MQkzfHGcytyjMJDD+47ZV1YNU=",
+        "lastModified": 1773189535,
+        "narHash": "sha256-E1G/Or6MWeP+L6mpQ0iTFLpzSzlpGrITfU2220Gq47g=",
         "owner": "ipetkov",
         "repo": "crane",
-        "rev": "099f9014bc8d0cd6e445470ea1df0fd691d5a548",
+        "rev": "6fa2fb4cf4a89ba49fc9dd5a3eb6cde99d388269",
         "type": "github"
       },
       "original": {
@@ -23,16 +23,16 @@
         "rust-overlay": "rust-overlay"
       },
       "locked": {
-        "lastModified": 1768035092,
-        "narHash": "sha256-YlRRCOM0q1vXFAMFaZwU1TjV2TNSYHTnCz124mBxETA=",
+        "lastModified": 1776685811,
+        "narHash": "sha256-UDXNCMn8RGYs5NznbGcBZfTHpcCyssg1mk2NVNjctl0=",
         "owner": "creusot-rs",
         "repo": "creusot",
-        "rev": "fd089be0e96442f5e71605fbb129e6d6f7b264f3",
+        "rev": "2640af77e4cf3686b428b5b252d7909ac1f48847",
         "type": "github"
       },
       "original": {
         "owner": "creusot-rs",
-        "ref": "v0.9.0",
+        "ref": "v0.11.0",
         "repo": "creusot",
         "type": "github"
       }
@@ -57,11 +57,11 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1764020296,
-        "narHash": "sha256-6zddwDs2n+n01l+1TG6PlyokDdXzu/oBmEejcH5L5+A=",
+        "lastModified": 1773068389,
+        "narHash": "sha256-vMrm7Pk2hjBRPnCSjhq1pH0bg350Z+pXhqZ9ICiqqCs=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "a320ce8e6e2cc6b4397eef214d202a50a4583829",
+        "rev": "44bae273f9f82d480273bab26f5c50de3724f52f",
         "type": "github"
       },
       "original": {
@@ -91,11 +91,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1764211126,
-        "narHash": "sha256-p5y13PnMZYd5WdHk+XCzyUaLGBUCwnz2n4KYKEZM0Pw=",
+        "lastModified": 1773216618,
+        "narHash": "sha256-iZlowevS+xKLGOXtZwpIrz3SWe7PtoGUfEeVZNib+WE=",
         "owner": "oxalica",
         "repo": "rust-overlay",
-        "rev": "895935bff08cfcfb663fb9c8263c43596e7cd1ed",
+        "rev": "07d7dc6fcc5eae76b4fb0e19d4afd939437bec97",
         "type": "github"
       },
       "original": {
