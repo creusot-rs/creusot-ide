@@ -10,6 +10,7 @@
                 { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result)\\b",
                   "name": "keyword" },
                 { "include": "#check-arguments" },
+                { "include": "#trusted-arguments" },
                 { "include": "#logic-arguments" },
                 { "include": "#erasure-arguments" },
                 { "include": "#string" },
@@ -38,6 +39,23 @@
                 { "include": "#paren" },
                 {
                     "match": "\\b(?:terminates|ghost)\\b",
+                    "name": "keyword"
+                }
+            ]
+        },
+        "trusted-arguments": {
+            "begin": "(?<=trusted)\\(",
+            "end": "\\)",
+            "beginCaptures": {
+                "0": { "name": "punctuation.section.parens.begin" }
+            },
+            "endCaptures": {
+                "0": { "name": "punctuation.section.parens.end" }
+            },
+            "patterns": [
+                { "include": "#paren" },
+                {
+                    "match": "\\b(?:terminates|ghost|positive)\\b",
                     "name": "keyword"
                 }
             ]
@@ -148,6 +166,7 @@
                 { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result)\\b",
                   "name": "keyword" },
                 { "include": "#check-arguments" },
+                { "include": "#trusted-arguments" },
                 { "include": "#logic-arguments" },
                 { "include": "#erasure-arguments" },
                 { "include": "#contract" }
