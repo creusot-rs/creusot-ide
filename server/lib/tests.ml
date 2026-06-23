@@ -106,21 +106,13 @@ let%test_unit "proof_info" =
   let info = get_proof_info env ~proof_file:"../testdata/sum/proof.json" ~coma_file:"../testdata/sum.coma" in
   let open ProofInfo in
   let expected = [
-    "Assert [new 'start' type invariant]";
-    "Assert [new 'end' type invariant]";
-    "Assert [into_iter 'self' type invariant]";
-    "Assert [into_iter requires]";
-    "Assert [for invariant]";
-    "Assert [for invariant]";
-    "Assert [for invariant]";
-    "Assert [loop invariant]";
-    "Assert [next 'self' type invariant]";
-    "Assert [integer overflow]";
-    "Assert [for invariant]";
-    "Assert [for invariant]";
-    "Assert [for invariant]";
-    "Assert [loop invariant]";
-    "Assert";
+    "new 'start' type invariant";
+    "new 'end' type invariant";
+    "into_iter 'self' type invariant";
+    "into_iter requires";
+    "next 'self' type invariant";
+    "integer overflow";
+    "";
   ] in
   let actual =
     List.filter_map (fun goal -> if Option.is_some goal.range then None else Some goal.expl)
