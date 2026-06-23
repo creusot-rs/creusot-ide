@@ -305,14 +305,14 @@ let for_goal (env : Why3find.Project.env) (q : qualified_goal) (f : Session.goal
     let theories, format = Wutil.load_theories env.why3.env file in
     let dir, _lib = Wutil.filepath file in
     let s = Why3find.Session.create ~dir ~file ~format theories in
-    let+ theory = List.find_opt (fun t -> Session.name t = q.theory) (Session.theories s) |> warn_if_none (Printf.sprintf "theory %s not found" q.theory) in
-    let+ goal = List.find_opt (fun g -> Session.goal_name g = q.goal_info.vc) (Session.split theory) |> warn_if_none (Printf.sprintf "vc %s not found" q.goal_info.vc) in
-    let+ goal = path_goal ~theory:(Session.name theory) env.why3.env goal q.goal_info.tactics in
+    let+ theory = List.find_opt (fun t -> Session.thy_name t = q.theory) (Session.theories s) |> warn_if_none (Printf.sprintf "theory %s not found" q.theory) in
+    let+ goal = List.find_opt (fun g -> Session.name g = q.goal_info.vc) (Session.split theory) |> warn_if_none (Printf.sprintf "vc %s not found" q.goal_info.vc) in
+    let+ goal = path_goal ~theory:(Session.thy_name theory) env.why3.env goal q.goal_info.tactics in
     f goal
   with e -> log Error "get_goal: Failed to load why3: %s" (Printexc.to_string e); None
 
 let get_goal env q = for_goal env q (fun goal ->
-  let task = Session.goal_task goal in
+  let task = Session.task goal in
   Some (Format.asprintf "%a" Why3.Pretty.print_sequent task))
 
 let rawloc_to_range (_, l1, c1, l2, c2) =
@@ -324,7 +324,7 @@ let loc_to_range loc = rawloc_to_range (Why3.Loc.get loc)
 
 let goal_term_loc (g : Session.goal) =
   let open Why3 in
-  Term.t_loc (Task.task_goal_fmla (Session.goal_task g))
+  Term.t_loc (Task.task_goal_fmla (Session.task g))
 
 let get_goal_loc env q = for_goal env q goal_term_loc
 
@@ -490,6 +490,10 @@ let known_goal_type expl =
   "assertion" = expl ||
   string_contains "ensures" expl
 
+let goal_expl goal =
+  let d = Vc.task_descr (Session.task goal) in
+  d.expl
+
 let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
   let rust_file, entity_range = get_src coma_file in
   let collect_goals theories =
@@ -501,9 +505,9 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
           g.Why3Session.children "split_vc" |> List.iteri (fun i g ->
             let subgoal = ProofPath.{
               file = coma_file;
-              theory = Session.name th.Why3Session.theory;
-              goal_info = { vc = Session.goal_name g.Why3Session.goal; tactics = [("split_vc", i)] } } in
-            let expl = Session.goal_idename g.Why3Session.goal in
+              theory = Session.thy_name th.Why3Session.theory;
+              goal_info = { vc = Session.name g.Why3Session.goal; tactics = [("split_vc", i)] } } in
+            let expl = goal_expl g.Why3Session.goal in
             let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc g.Why3Session.goal) else None in
             goals := ProofInfo.{ range ; expl ; unproved_subgoals = [subgoal] } :: !goals
           );
@@ -514,13 +518,13 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
       let json = json |> member "proofs" in
       let theories_left = ref theories in
       to_assoc json |> List.iter (fun (theory, json) ->
-        match find_remove (fun th -> Session.name th.Why3Session.theory = theory) !theories_left with
+        match find_remove (fun th -> Session.thy_name th.Why3Session.theory = theory) !theories_left with
         | None -> failwith (Printf.sprintf "theory %s not found" theory)
         | Some (th, theories') ->
           theories_left := theories';
           let goals_left = ref (th.Why3Session.theory_children ()) in
           to_assoc json |> List.iter (fun (vc, json) ->
-            match find_remove (fun g -> Session.goal_name g.Why3Session.goal = vc) !goals_left with
+            match find_remove (fun g -> Session.name g.Why3Session.goal = vc) !goals_left with
             | None -> Log.error "vc %s.%s not found" theory vc
             | Some (g, goals') ->
               goals_left := goals';
@@ -564,7 +568,7 @@ let get_proof_info (env : _) ~proof_file ~coma_file : ProofInfo.t =
                 in
                 collect_subgoals [(tactic, i)] json;
                 if not (List.is_empty !subgoals) then (
-                  let expl = Session.goal_idename child.Why3Session.goal in
+                  let expl = goal_expl child.Why3Session.goal in
                   let range = if known_goal_type expl then Option.map loc_to_range (goal_term_loc child.Why3Session.goal) else None in
                   goals := ProofInfo.{ range ; expl ; unproved_subgoals = List.rev !subgoals } :: !goals
                 ))
