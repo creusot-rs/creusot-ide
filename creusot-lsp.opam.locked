@@ -19,25 +19,25 @@ depends: [
   "camlzip" {= "1.14"}
   "conf-autoconf" {= "0.2"}
   "conf-gmp" {= "5"}
-  "conf-pkg-config" {= "4"}
+  "conf-pkg-config" {= "5"}
   "conf-zlib" {= "1"}
   "cppo" {= "1.8.0"}
   "csexp" {= "1.5.2"}
-  "dune" {= "3.22.2"}
-  "dune-build-info" {= "3.22.2"}
-  "dune-configurator" {= "3.22.2"}
-  "dune-private-libs" {= "3.22.2"}
-  "dune-site" {= "3.22.2"}
-  "dyn" {= "3.22.2"}
-  "fs-io" {= "3.22.2"}
+  "dune" {= "3.23.1"}
+  "dune-build-info" {= "3.23.1"}
+  "dune-configurator" {= "3.23.1"}
+  "dune-private-libs" {= "3.23.1"}
+  "dune-site" {= "3.23.1"}
+  "dyn" {= "3.23.1"}
+  "fs-io" {= "3.23.1"}
   "ISO8601" {= "0.2.6"}
   "jane-street-headers" {= "v0.17.0"}
   "jsonm" {= "1.0.2"}
   "jst-config" {= "v0.17.0"}
-  "linol" {= "0.10"}
-  "linol-lwt" {= "0.10"}
+  "linol" {= "0.11"}
+  "linol-lwt" {= "0.11"}
   "logs" {= "0.10.0"}
-  "lwt" {= "5.9.2"}
+  "lwt" {= "5.10.1"}
   "menhir" {= "20260209"}
   "menhirCST" {= "20260209"}
   "menhirGLR" {= "20260209"}
@@ -50,20 +50,20 @@ depends: [
   "ocaml-config" {= "3"}
   "ocaml-options-vanilla" {= "1"}
   "ocaml-syntax-shims" {= "1.0.0"}
-  "ocaml_intrinsics_kernel" {= "v0.17.1"}
+  "ocaml_intrinsics_kernel" {= "v0.17.2"}
   "ocamlbuild" {= "0.16.1"}
   "ocamlfind" {= "1.9.8"}
   "ocamlgraph" {= "2.2.0"}
   "ocplib-endian" {= "1.2"}
   "octavius" {= "1.2.2"}
-  "ordering" {= "3.22.2"}
+  "ordering" {= "3.23.1"}
   "pp" {= "2.0.0"}
   "ppx_assert" {= "v0.17.0"}
   "ppx_base" {= "v0.17.0"}
   "ppx_cold" {= "v0.17.0"}
   "ppx_compare" {= "v0.17.0"}
   "ppx_derivers" {= "1.2.1"}
-  "ppx_deriving" {= "6.1.1"}
+  "ppx_deriving" {= "6.1.3"}
   "ppx_enumerate" {= "v0.17.0"}
   "ppx_expect" {= "v0.17.3"}
   "ppx_globalize" {= "v0.17.2"}
@@ -81,18 +81,18 @@ depends: [
   "sexplib0" {= "v0.17.0"}
   "stdio" {= "v0.17.0"}
   "stdlib-shims" {= "0.3.0"}
-  "stdune" {= "3.22.2"}
+  "stdune" {= "3.23.1"}
   "stringext" {= "1.6.0"}
   "terminal_size" {= "0.2.0"}
   "time_now" {= "v0.17.0"}
   "toml" {= "7.1.0"}
-  "top-closure" {= "3.22.2"}
+  "top-closure" {= "3.23.1"}
   "topkg" {= "1.1.1"}
   "trace" {= "0.12"}
   "uri" {= "4.4.0"}
   "uutf" {= "1.0.4"}
-  "why3" {= "git-2c0f2992"}
-  "why3find" {= "git-eab37557"}
+  "why3" {= "git-c369bc4c"}
+  "why3find" {= "git-0f054b93"}
   "xmlm" {= "1.4.0"}
   "yojson" {= "2.2.2"}
   "zarith" {= "1.14"}
@@ -113,11 +113,11 @@ build: [
 ]
 pin-depends: [
   [
-    "why3.git-2c0f2992"
-    "git+https://gitlab.inria.fr/why3/why3.git#2c0f2992af85f82f3eda0f158dcf10e62e0db875"
-  ]
+  "why3.git-c369bc4c"
+  "git+https://gitlab.inria.fr/why3/why3.git#c369bc4cdc22d1e714255bb3675a2ce6b7242f19"
+]
   [
-    "why3find.git-eab37557"
-    "git+https://git.frama-c.com/pub/why3find.git#eab37557d3e24e1913a3c4f44bc5528ef497c6c9"
-  ]
+  "why3find.git-0f054b93"
+  "git+https://github.com/creusot-rs/why3find.git#0f054b93c86ac7ba20bca7df5d1563a9a4434a30"
+]
 ]
