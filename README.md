@@ -59,7 +59,7 @@ At the moment, installing `creusot-lsp` in another switch or without opam altoge
 
     Add this option in `settings.json` to run Creusot for checks instead:
 
-    ```
+    ```json
     "rust-analyzer.check.overrideCommand": [
             "cargo",
             "creusot",
@@ -67,6 +67,16 @@ At the moment, installing `creusot-lsp` in another switch or without opam altoge
             "--",
             "--message-format=json"
         ]
+    ```
+
+    And this option to enable Go-to-definition for rust-analyzer; the nightly version should be the one
+    used by Creusot (as shown by `cargo creusot version`):
+
+    ```json
+    "rust-analyzer.cargo.extraEnv": {
+        "RUSTUP_TOOLCHAIN": "nightly-2026-08-03",
+        "RUSTFLAGS": "--cfg creusot --cfg feature=\"creusot\""
+    }
     ```
 
 - rust-analyzer overrides Creusot IDE's syntax highlighting by emitting semantic tokens inside
