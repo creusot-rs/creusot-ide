@@ -54,7 +54,7 @@ At the moment, installing `creusot-lsp` in another switch or without opam altoge
 
 ### Additional configuration / Known issues
 
-- Rust analyzer doesn't know how to parse Creusot specifications (attributes such as `ensures`, etc.),
+- rust-analyzer doesn't know how to parse Creusot specifications (attributes such as `ensures`, etc.),
     so they are underlined in red.
 
     Add this option in `settings.json` to run Creusot for checks instead:
@@ -69,7 +69,7 @@ At the moment, installing `creusot-lsp` in another switch or without opam altoge
         ]
     ```
 
-- Rust analyzer overrides Creusot IDE's syntax highlighting by emitting semantic tokens inside
+- rust-analyzer overrides Creusot IDE's syntax highlighting by emitting semantic tokens inside
     attributes and macros.
 
     Disable semantic tokens: Settings (`Ctrl+P` › Preferences: Open Settings (UI)) › Editor › Semantic Highlighting: Enabled › false
