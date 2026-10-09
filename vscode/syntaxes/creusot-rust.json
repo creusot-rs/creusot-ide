@@ -7,7 +7,7 @@
             "end": "\\]",
             "contentName": "meta.embedded.creusot source.creusot",
             "patterns": [
-                { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result)\\b",
+                { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result|creusot::open_inv)\\b",
                   "name": "keyword" },
                 { "include": "#check-arguments" },
                 { "include": "#trusted-arguments" },
@@ -71,7 +71,7 @@
             },
             "patterns": [
                 {
-                    "match": "\\b(?:prophetic|open|law|opaque|sealed|inline)\\b",
+                    "match": "\\b(?:prophetic|open|law|opaque|sealed|inline|indirect)\\b",
                     "name": "keyword"
                 },
                 { "include": "#open-arguments" },
@@ -163,7 +163,7 @@
             "begin": "cfg_attr\\s*\\(\\s*creusot\\s*,",
             "end": "\\)",
             "patterns": [
-                { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result)\\b",
+                { "match": "\\b(?:logic|trusted|opaque|bitwise_proof|check|erasure|builtin|intrinsic|open_inv_result|creusot::open_inv)\\b",
                   "name": "keyword" },
                 { "include": "#check-arguments" },
                 { "include": "#trusted-arguments" },
